@@ -1,0 +1,11 @@
+#!/bin/sh
+# rukeOS web browser launcher: GNOME Web (WebKitGTK) tuned for low RAM and no GPU; NetSurf as fallback.
+if command -v epiphany >/dev/null 2>&1; then
+  export ADW_DEBUG_COLOR_SCHEME=prefer-dark   # dark libadwaita UI
+  export GSK_RENDERER=cairo                    # GTK4 software renderer (no GPU needed, less RAM)
+  export WEBKIT_DISABLE_DMABUF_RENDERER=1      # avoid GPU buffer path on fbdev/vesa/old GPUs
+  export NO_AT_BRIDGE=1 GTK_A11Y=none
+  exec epiphany "$@"
+fi
+command -v netsurf >/dev/null 2>&1 && exec netsurf "$@"
+exec xterm -T "No browser" -hold -e sh -c 'echo "No browser installed yet. Connect to the internet and run: ruke-update"'

@@ -1,0 +1,6 @@
+*.iso
+*.img
+*.zip
+*.tar.gz
+*.bundle
+_serve/

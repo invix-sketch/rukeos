@@ -1,0 +1,92 @@
+<?xml version="1.0"?>
+<JWM>
+  <RootMenu onroot="3" label="rukeOS" height="22">
+    <Program icon="utilities-terminal" label="Terminal">xterm</Program>
+    <Program icon="system-file-manager" label="Files">pcmanfm</Program>
+    <Program icon="accessories-text-editor" label="Text Editor">mousepad</Program>
+    <Program icon="web-browser" label="Web Browser">ruke-browser</Program>
+    <Program icon="netsurf" label="Lite Browser (NetSurf)">netsurf</Program>
+    <Separator/>
+    <Program icon="preferences-system-network" label="Wi-Fi &amp; Network">xterm -T Network -e nmtui</Program>
+    <Program icon="utilities-system-monitor" label="Task Manager">xterm -T Tasks -e htop</Program>
+    <Separator/>
+    <Restart label="Restart desktop" icon="view-refresh"/>
+    <Program label="Reboot" icon="system-reboot">sudo reboot</Program>
+    <Program label="Power off" icon="system-shutdown">sudo poweroff</Program>
+  </RootMenu>
+
+  <Tray x="0" y="0" height="32" autohide="off" layer="above">
+    <TrayButton label="rukeOS" icon="/usr/share/rukeos/logo-32.png" popup="Applications">exec:jgmenu --simple --csv-file=/home/judah/.config/jgmenu/menu.csv</TrayButton>
+    <Spacer width="10"/>
+    <TaskList maxwidth="200"/>
+    <Spacer width="6"/>
+    <Clock format="%a %d %b   %H:%M"><Button mask="123">exec:xterm -T Calendar -geometry 24x10 -hold -e cal</Button></Clock>
+    <Spacer width="10"/>
+  </Tray>
+
+  <Tray x="0" y="-10" halign="center" height="58" autohide="off" layer="above">
+    <Spacer width="8"/>
+    <TrayButton popup="Terminal" icon="utilities-terminal">exec:xterm</TrayButton>
+    <TrayButton popup="Files" icon="system-file-manager">exec:pcmanfm</TrayButton>
+    <TrayButton popup="Web Browser" icon="web-browser">exec:ruke-browser</TrayButton>
+    <TrayButton popup="Text Editor" icon="accessories-text-editor">exec:mousepad</TrayButton>
+    <TrayButton popup="Wi-Fi &amp; Network" icon="preferences-system-network">exec:xterm -T Network -e nmtui</TrayButton>
+    <TrayButton popup="Task Manager" icon="utilities-system-monitor">exec:xterm -T Tasks -e htop</TrayButton>
+    <TrayButton popup="Volume" icon="multimedia-volume-control">exec:xterm -T Volume -e alsamixer</TrayButton>
+    <Spacer width="8"/>
+  </Tray>
+
+  <WindowStyle decorations="flat">
+    <Font>Inter:semibold:size=10</Font>
+    <Width>1</Width><Height>32</Height><Corner>0</Corner>
+    <Foreground>#565f89</Foreground><Background>#1f2335</Background><Outline>#16161e</Outline><Opacity>1.0</Opacity>
+    <Active><Foreground>#c0caf5</Foreground><Background>#2a2f45</Background><Outline>#7aa2f7</Outline><Opacity>1.0</Opacity></Active>
+  </WindowStyle>
+  <TrayStyle decorations="flat">
+    <Font>Inter:medium:size=10</Font>
+    <Background>#16161e</Background><Foreground>#c0caf5</Foreground><Opacity>0.88</Opacity>
+  </TrayStyle>
+  <TaskListStyle list="desktop" group="false">
+    <Font>Inter:size=9.5</Font>
+    <Foreground>#a9b1d6</Foreground><Background>#16161e</Background>
+    <Active><Foreground>#ffffff</Foreground><Background>#2a2f45:#3d59a1</Background></Active>
+  </TaskListStyle>
+  <TrayButtonStyle decorations="flat">
+    <Font>Inter:semibold:size=10</Font>
+    <Foreground>#c0caf5</Foreground><Background>#16161e</Background>
+    <Active><Foreground>#ffffff</Foreground><Background>#2a2f45</Background></Active>
+  </TrayButtonStyle>
+  <ClockStyle><Font>Inter:semibold:size=10</Font><Foreground>#c0caf5</Foreground></ClockStyle>
+  <MenuStyle decorations="flat">
+    <Font>Inter:size=10</Font>
+    <Foreground>#c0caf5</Foreground><Background>#1f2335</Background><Outline>#2a2f45</Outline>
+    <Active><Foreground>#16161e</Foreground><Background>#7aa2f7</Background></Active>
+    <Opacity>0.96</Opacity>
+  </MenuStyle>
+  <PopupStyle delay="400"><Font>Inter:size=9</Font><Foreground>#c0caf5</Foreground><Background>#24283b</Background><Outline>#2a2f45</Outline></PopupStyle>
+
+  <IconPath>/usr/share/icons/Papirus-Dark/48x48/apps</IconPath>
+  <IconPath>/usr/share/icons/Papirus/48x48/apps</IconPath>
+  <IconPath>/usr/share/icons/Papirus-Dark/24x24/actions</IconPath>
+  <IconPath>/usr/share/icons/Papirus/24x24/actions</IconPath>
+  <IconPath>/usr/share/icons/Papirus/48x48/devices</IconPath>
+  <IconPath>/usr/share/icons/Papirus/48x48/places</IconPath>
+  <IconPath>/usr/share/icons/hicolor/48x48/apps</IconPath>
+  <IconPath>/usr/share/icons/Papirus-Dark/24x24/panel</IconPath>
+  <IconPath>/usr/share/icons/Papirus/24x24/panel</IconPath>
+  <Desktops width="2" height="1"/>
+  <FocusModel>click</FocusModel><SnapMode distance="10">border</SnapMode><MoveMode>opaque</MoveMode><ResizeMode>opaque</ResizeMode>
+  <Group><Class>XTerm</Class><Option>icon:utilities-terminal</Option><Option>centered</Option></Group>
+  <Group><Class>NetSurf</Class><Option>icon:web-browser</Option></Group>
+  <Group><Class>Epiphany</Class><Class>epiphany</Class><Class>org.gnome.Epiphany</Class><Option>icon:web-browser</Option></Group>
+  <Group><Name>rukeOS update</Name><Option>centered</Option><Option>layer:above</Option></Group>
+  <StartupCommand>sh /home/judah/.config/autostart.sh</StartupCommand>
+  <Key mask="A" key="Tab">nextstacked</Key>
+  <Key mask="A" key="F4">close</Key>
+  <Key mask="4" key="Return">exec:xterm</Key>
+  <Key mask="4" key="e">exec:pcmanfm</Key>
+  <Key mask="4" key="space">exec:jgmenu --simple --csv-file=/home/judah/.config/jgmenu/menu.csv</Key>
+  <Key mask="4" key="Up">maximize</Key>
+  <Key mask="4" key="Down">minimize</Key>
+  <Key mask="CA" key="t">exec:xterm</Key>
+</JWM>

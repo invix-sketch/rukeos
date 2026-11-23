@@ -1,0 +1,9 @@
+# rukeOS defaults for GTK4/libadwaita apps (GNOME Web): dark, same fonts/icons as the desktop
+[org.gnome.desktop.interface]
+color-scheme='prefer-dark'
+gtk-theme='adw-gtk3-dark'
+icon-theme='Papirus-Dark'
+font-name='Inter 10'
+document-font-name='Inter 10'
+monospace-font-name='JetBrains Mono 10'
+enable-animations=false

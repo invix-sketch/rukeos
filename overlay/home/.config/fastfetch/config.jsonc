@@ -1,0 +1,5 @@
+{
+  "logo": { "type": "file", "source": "/usr/share/rukeos/logo.txt", "color": { "1": "blue", "2": "magenta" }, "padding": { "top": 1, "left": 1, "right": 3 } },
+  "display": { "separator": "  ", "color": { "keys": "blue" } },
+  "modules": [ "title", "separator", "os", "kernel", "uptime", "packages", "wm", "cpu", "memory", "disk", "localip", "break", "colors" ]
+}

@@ -1,0 +1,15 @@
+# Packages ruke-update makes sure are installed (one per line, # = comment).
+# Web browser (WebKitGTK) + what it needs to look right
+epiphany
+dconf
+gst-plugins-good
+# Wi-Fi / Bluetooth firmware that 0.2 lacked (common in HP laptops)
+linux-firmware-rtw88
+linux-firmware-rtw89
+linux-firmware-mediatek
+linux-firmware-ath11k
+linux-firmware-qca
+linux-firmware-rtl_bt
+# handy tools
+curl
+ca-certificates

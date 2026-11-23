@@ -1,0 +1,156 @@
+#!/bin/sh
+# ruke-update - keep rukeOS up to date without reflashing.
+#   ruke-update            check, then update everything (asks first)
+#   ruke-update --yes      update without asking
+#   ruke-update --check    only say whether a new rukeOS version is out (exit 10 = yes, 0 = no, 1 = error)
+#   ruke-update --force    re-apply the rukeOS files even if already on the latest version
+#   ruke-update --no-upgrade   skip "apk upgrade" of system packages
+# Settings: /etc/rukeos/update.conf (+ optional /etc/rukeos/update.local.conf)
+SELF_VERSION=3
+CONF=/etc/rukeos/update.conf; LCONF=/etc/rukeos/update.local.conf
+STATE=/var/lib/rukeos; LOG=/var/log/ruke-update.log
+YES=0; CHECK=0; FORCE=0; UPGRADE=1; QUIET=0; RAM_OK=0
+for a in "$@"; do case "$a" in
+  -y|--yes) YES=1;; --check) CHECK=1;; --force) FORCE=1;; --no-upgrade) UPGRADE=0;; -q|--quiet) QUIET=1;;
+  --allow-ram) RAM_OK=1;; --continue) ;; -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0;;
+  *) echo "unknown option: $a (try --help)"; exit 1;; esac; done
+
+# env overrides win over the config files
+E_RAW=$RUKE_RAW; E_TAR=$RUKE_TARBALL
+[ -r $CONF ] && . $CONF; [ -r $LCONF ] && . $LCONF
+[ -n "$E_RAW" ] && RUKE_RAW=$E_RAW; [ -n "$E_TAR" ] && RUKE_TARBALL=$E_TAR
+: "${RUKE_OWNER:=invix-sketch}" "${RUKE_REPO:=rukeos}" "${RUKE_BRANCH:=main}"
+: "${RUKE_RAW:=https://raw.githubusercontent.com/$RUKE_OWNER/$RUKE_REPO/$RUKE_BRANCH}"
+: "${RUKE_TARBALL:=https://github.com/$RUKE_OWNER/$RUKE_REPO/archive/refs/heads/$RUKE_BRANCH.tar.gz}"
+
+if [ -t 1 ]; then B=$(printf '\033[1m'); C=$(printf '\033[38;2;122;162;247m'); G=$(printf '\033[38;2;158;206;106m'); Y=$(printf '\033[38;2;224;175;104m'); R=$(printf '\033[38;2;247;118;142m'); N=$(printf '\033[0m'); fi
+say()  { [ $QUIET = 1 ] || printf '%s\n' "$*"; }
+step() { printf '%s==>%s %s%s%s\n' "$C" "$N" "$B" "$*" "$N"; }
+warn() { printf '%s!!%s %s\n' "$Y" "$N" "$*"; }
+die()  { printf '%sxx%s %s\n' "$R" "$N" "$*"; exit 1; }
+# run apk, show its lines indented, keep a copy in $1 and in the log; warn on errors
+run_apk() { out=$1; shift; { apk --no-progress "$@" 2>&1; echo "rc=$?"; } | tee "$out" | awk '!/^rc=/{print "   " $0; fflush()}'; cat "$out" >&3
+  grep -q '^rc=0$' "$out" || warn "apk $1 reported problems (see $LOG)"; }
+fetch() { wget -q -T 20 -O "$2" "$1" 2>/dev/null || { command -v curl >/dev/null && curl -fsSL --max-time 300 -o "$2" "$1"; }; }
+
+cur=$(cat /etc/rukeos/version 2>/dev/null); [ -n "$cur" ] || cur=$(. /etc/os-release 2>/dev/null; echo "${VERSION_ID:-0}")
+T=$(mktemp -d /tmp/ruke-update.XXXXXX) || die "no /tmp space"; trap 'rm -rf "$T"' EXIT INT TERM
+
+# ---- 1. what's the newest version? (no root needed) ----
+if ! fetch "$RUKE_RAW/VERSION" "$T/VERSION" || [ ! -s "$T/VERSION" ]; then
+  [ $CHECK = 1 ] && [ $QUIET = 1 ] && exit 1
+  die "Can't reach the update server ($RUKE_RAW). Connect to the internet first: dock > network icon (nmtui)."
+fi
+new=$(tr -d ' \r\n' < "$T/VERSION")
+cmp=$(apk version -t "$cur" "$new" 2>/dev/null)
+if [ $CHECK = 1 ]; then
+  if [ "$cmp" = "<" ]; then say "rukeOS $new is available (you have $cur). Run: ruke-update"; exit 10; fi
+  say "rukeOS is up to date ($cur)."; exit 0
+fi
+
+# ---- from here on we need root ----
+[ "$(id -u)" = 0 ] || exec sudo -E "$0" "$@"
+mkdir /run/ruke-update.lock 2>/dev/null || die "ruke-update is already running (or remove /run/ruke-update.lock)."
+trap 'rm -rf "$T"; rmdir /run/ruke-update.lock 2>/dev/null' EXIT INT TERM
+mkdir -p $STATE /etc/rukeos; exec 3>>$LOG; echo "=== $(date) ruke-update $cur -> $new" >&3
+
+pdev=$(cat /media/.persist-device 2>/dev/null)
+if [ -d /media/live ] && { [ -z "$pdev" ] || [ "$pdev" = none ]; }; then
+  warn "Saving between boots is OFF: anything installed now is gone after a reboot,"
+  warn "and big installs can run out of RAM. Turn it on first: menu > Saving between boots."
+  [ $RAM_OK = 1 ] || die "Stopped. (Use --allow-ram to update this session anyway.)"
+fi
+
+if [ "$cmp" = "<" ]; then say "${B}rukeOS $new is available${N} (you have $cur)."
+else say "rukeOS files are on the latest version ($cur); system packages will still be checked."; fi
+if [ $YES = 0 ] && [ -t 0 ]; then printf 'Update now? [Y/n] '; read -r a; case "$a" in n|N|no) say "Cancelled."; exit 0;; esac; fi
+
+# ---- 2. download the repo ----
+step "Downloading rukeOS update files"
+if [ -n "$RUKE_SRC" ] && [ -d "$RUKE_SRC/overlay" ]; then SRC=$RUKE_SRC
+else
+  fetch "$RUKE_TARBALL" "$T/src.tgz" || die "Download failed: $RUKE_TARBALL"
+  mkdir -p "$T/x" && tar -xzf "$T/src.tgz" -C "$T/x" || die "Downloaded file is broken."
+  SRC=$(find "$T/x" -mindepth 1 -maxdepth 1 -type d | head -1)
+fi
+[ -f "$SRC/VERSION" ] || die "Update files look wrong (no VERSION)."
+# self-update: if the repo has a newer ruke-update, switch to it and start over
+NEWME=$SRC/overlay/system/usr/local/bin/ruke-update
+if [ -z "$RUKE_SRC" ] && [ -f "$NEWME" ] && ! cmp -s "$NEWME" "$0"; then
+  install -m755 "$NEWME" /usr/local/bin/ruke-update
+  say "ruke-update itself was updated, restarting it..."
+  cp -a "$SRC" /run/ruke-src.$$ ; rmdir /run/ruke-update.lock
+  RUKE_SRC=/run/ruke-src.$$ /usr/local/bin/ruke-update --yes --continue $( [ $FORCE = 1 ] && echo --force ) $( [ $UPGRADE = 0 ] && echo --no-upgrade ) $( [ $RAM_OK = 1 ] && echo --allow-ram )
+  rc=$?; rm -rf /run/ruke-src.$$; exit $rc
+fi
+
+# ---- 3. system packages ----
+# The kernel comes from the USB stick, not from apk: never let apk replace its modules.
+step "Refreshing package lists (apk update)"
+apk update --no-progress >&3 2>&1 || die "apk update failed (no internet?). See $LOG"
+kv=$(apk list -I linux-lts 2>/dev/null | sed -n 's/^linux-lts-\([^ ]*\) .*/\1/p' | head -1)
+[ -n "$kv" ] && ! grep -qx "linux-lts=$kv" /etc/apk/world && apk add -q --no-progress "linux-lts=$kv" >&3 2>&1
+nup=0
+if [ $UPGRADE = 1 ]; then
+  step "Upgrading system packages (apk upgrade)"
+  run_apk "$T/up.log" upgrade; nup=$(grep -c 'Upgrading' "$T/up.log")
+fi
+step "Installing rukeOS apps"
+want=$(sed 's/#.*//' "$SRC/packages.txt" 2>/dev/null | tr -s ' \t\r' '\n' | grep -v '^$')
+missing=""; for p in $want; do apk info -e "$p" >/dev/null 2>&1 || missing="$missing $p"; done
+nin=0
+if [ -n "$missing" ]; then
+  say "   new:$missing"
+  run_apk "$T/add.log" add $want; nin=$(grep -c 'Installing' "$T/add.log")
+fi
+gone=$(sed 's/#.*//' "$SRC/remove.txt" 2>/dev/null | tr -s ' \t\r' '\n' | grep -v '^$')
+for p in $gone; do apk info -e "$p" >/dev/null 2>&1 && apk del -q --no-progress "$p" >&3 2>&1 && say "   removed $p"; done
+
+# ---- 4. rukeOS files (overlay) ----
+step "Applying rukeOS files"
+U=${RUKE_USER:-$(awk -F: '$3==1000{print $1; exit}' /etc/passwd)}; UH=$(awk -F: -v u="$U" '$1==u{print $6}' /etc/passwd)
+nf=0; BK="$UH/.local/share/ruke-update/backup/$(date +%Y%m%d-%H%M%S)"
+apply() { # $1 = overlay dir, $2 = target root, $3 = owner (or empty)
+  [ -d "$1" ] || return 0
+  ( cd "$1" && find . -type f -o -type l ) | while read -r f; do
+    f=${f#./}; s="$1/$f"; d="$2/$f"
+    case "$f" in etc/rukeos/update.local.conf) continue;; esac
+    if [ -e "$d" ] && cmp -s "$s" "$d"; then continue; fi
+    if [ -n "$3" ] && [ -e "$d" ]; then mkdir -p "$BK/$(dirname "$f")" && cp -a "$d" "$BK/$f"; fi
+    mkdir -p "$(dirname "$d")"; cp -a "$s" "$d.ruke-new" && mv -f "$d.ruke-new" "$d"
+    [ -z "$3" ] && chown -h 0:0 "$d"
+    [ -n "$3" ] && chown -h "$3" "$d" && { dd=$(dirname "$d"); while [ "$dd" != "$2" ] && [ "${#dd}" -gt "${#2}" ]; do chown "$3" "$dd"; dd=$(dirname "$dd"); done; }
+    echo "   $d"; echo "file $d" >&3
+  done
+}
+apply "$SRC/overlay/system" "" "" > "$T/files"
+[ -n "$UH" ] && apply "$SRC/overlay/home" "$UH" "$U:$U" >> "$T/files"
+chmod 755 /usr/local/bin/* 2>/dev/null
+nf=$(grep -c . "$T/files"); [ $QUIET = 1 ] || cat "$T/files"
+[ -d "$BK" ] && say "   (your old versions of changed files are saved in $BK)"
+
+# ---- 5. one-time migrations, then every-run hooks ----
+nm=0; touch $STATE/migrations.done
+for m in $(ls "$SRC/migrations"/*.sh 2>/dev/null | sort); do
+  id=$(basename "$m"); grep -qx "$id" $STATE/migrations.done && continue
+  step "Migration $id"
+  if RUKE_USER=$U RUKE_HOME=$UH RUKE_SRC=$SRC sh "$m" >&3 2>&1; then echo "$id" >> $STATE/migrations.done; nm=$((nm+1))
+  else warn "migration $id failed (will retry next time), see $LOG"; fi
+done
+for h in $(ls "$SRC/hooks"/*.sh 2>/dev/null | sort); do RUKE_USER=$U RUKE_HOME=$UH RUKE_SRC=$SRC sh "$h" >&3 2>&1; done
+
+# ---- 6. record version ----
+newv=$(tr -d ' \r\n' < "$SRC/VERSION"); echo "$newv" > /etc/rukeos/version
+for f in /etc/os-release /usr/lib/os-release; do [ -f "$f" ] && sed -i "s/^VERSION_ID=.*/VERSION_ID=$newv/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"rukeOS $newv\"/" "$f"; done
+date +%s > $STATE/last-update; sync
+
+printf '\n%s+------------------------------------------------+%s\n' "$G" "$N"
+printf '%s|%s %sUpdate finished%s\n' "$G" "$N" "$B" "$N"
+printf '%s|%s   rukeOS version : %s -> %s\n' "$G" "$N" "$cur" "$newv"
+printf '%s|%s   system packages: %s upgraded\n' "$G" "$N" "$nup"
+printf '%s|%s   apps installed : %s packages%s\n' "$G" "$N" "$nin" "${missing:+ (${missing# })}"
+printf '%s|%s   rukeOS files   : %s changed, %s migrations\n' "$G" "$N" "$nf" "$nm"
+printf '%s|%s   log            : %s\n' "$G" "$N" "$LOG"
+printf '%s+------------------------------------------------+%s\n' "$G" "$N"
+[ "$nf" -gt 0 ] && say "Restart the desktop to see the changes: menu > Restart desktop (or reboot)."
+exit 0

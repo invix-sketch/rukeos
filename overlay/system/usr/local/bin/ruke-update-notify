@@ -1,0 +1,14 @@
+#!/bin/sh
+# Runs at login: once a day, when online, checks for a new rukeOS version and offers to install it.
+STAMP=$HOME/.cache/ruke-update-checked; mkdir -p "$HOME/.cache"
+[ "$1" = "--now" ] || {
+  sleep 90
+  [ -f "$STAMP" ] && [ $(( $(date +%s) - $(cat "$STAMP" 2>/dev/null || echo 0) )) -lt 86400 ] && exit 0
+}
+for i in 1 2 3 4 5 6 7 8 9 10; do msg=$(ruke-update --check --quiet 2>/dev/null; echo "rc=$?"); case "$msg" in *rc=1) sleep 60;; *) break;; esac; done
+case "$msg" in *rc=10*) ;; *) date +%s > "$STAMP"; exit 0;; esac
+date +%s > "$STAMP"
+new=$(wget -qO- "$(. /etc/rukeos/update.conf; [ -r /etc/rukeos/update.local.conf ] && . /etc/rukeos/update.local.conf; echo "${RUKE_RAW:-https://raw.githubusercontent.com/$RUKE_OWNER/$RUKE_REPO/$RUKE_BRANCH}")/VERSION" 2>/dev/null)
+exec xterm -T "rukeOS update" -geometry 60x9 -e sh -c "
+printf '\n  \033[1;38;2;122;162;247mA new rukeOS is out: %s\033[0m\n\n  Install it now? It keeps your files and settings.\n\n  [Y] update now     [n] later\n\n  ' '$new'
+read a; case \"\$a\" in n|N) exit 0;; esac; ruke-update --yes; printf \"\\n  Press Enter to close. \"; read x; "
