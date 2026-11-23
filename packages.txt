@@ -1,4 +1,6 @@
 # Packages ruke-update makes sure are installed (one per line, # = comment).
+# File manager (dock: Files) - light GTK3 app that follows the dark theme
+pcmanfm
 # Web browser (WebKitGTK) + what it needs to look right
 epiphany
 dconf
