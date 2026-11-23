@@ -14,4 +14,5 @@ linux-firmware-qca
 linux-firmware-rtl_bt
 # handy tools
 curl
+networkmanager-cli
 ca-certificates
