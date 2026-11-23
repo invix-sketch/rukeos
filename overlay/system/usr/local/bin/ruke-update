@@ -127,6 +127,9 @@ apply "$SRC/overlay/system" "" "" > "$T/files"
 [ -n "$UH" ] && apply "$SRC/overlay/home" "$UH" "$U:$U" >> "$T/files"
 chmod 755 /usr/local/bin/* 2>/dev/null
 nf=$(grep -c . "$T/files"); [ $QUIET = 1 ] || cat "$T/files"
+# backups were made as root: give the home folders back to the user
+for d in "$UH/.local" "$UH/.local/share" "$UH/.config" "$UH/.cache"; do [ -d "$d" ] && chown "$U:$U" "$d"; done
+[ -d "$UH/.local/share/ruke-update" ] && chown -R "$U:$U" "$UH/.local/share/ruke-update"
 [ -d "$BK" ] && say "   (your old versions of changed files are saved in $BK)"
 
 # ---- 5. one-time migrations, then every-run hooks ----
