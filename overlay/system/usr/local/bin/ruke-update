@@ -115,6 +115,8 @@ apply() { # $1 = overlay dir, $2 = target root, $3 = owner (or empty)
   ( cd "$1" && find . -type f -o -type l ) | while read -r f; do
     f=${f#./}; s="$1/$f"; d="$2/$f"
     case "$f" in etc/rukeos/update.local.conf) continue;; esac
+    # "seed" files (apps rewrite them, e.g. PCManFM settings): only put there if missing
+    [ -n "$3" ] && [ -e "$d" ] && grep -qx "$f" "$SRC/home-seed.txt" 2>/dev/null && continue
     if [ -e "$d" ] && cmp -s "$s" "$d"; then continue; fi
     if [ -n "$3" ] && [ -e "$d" ]; then mkdir -p "$BK/$(dirname "$f")" && cp -a "$d" "$BK/$f"; fi
     mkdir -p "$(dirname "$d")"; cp -a "$s" "$d.ruke-new" && mv -f "$d.ruke-new" "$d"
@@ -124,7 +126,10 @@ apply() { # $1 = overlay dir, $2 = target root, $3 = owner (or empty)
   done
 }
 apply "$SRC/overlay/system" "" "" > "$T/files"
-[ -n "$UH" ] && apply "$SRC/overlay/home" "$UH" "$U:$U" >> "$T/files"
+# desktop files in your home are only refreshed when a new rukeOS version arrives (or --force)
+if [ -n "$UH" ] && { [ "$cmp" = "<" ] || [ $FORCE = 1 ] || [ ! -f $STATE/home-applied ]; }; then
+  apply "$SRC/overlay/home" "$UH" "$U:$U" >> "$T/files"; echo "$new" > $STATE/home-applied
+fi
 chmod 755 /usr/local/bin/* 2>/dev/null
 nf=$(grep -c . "$T/files"); [ $QUIET = 1 ] || cat "$T/files"
 # backups were made as root: give the home folders back to the user

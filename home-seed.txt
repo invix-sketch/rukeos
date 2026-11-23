@@ -1,0 +1,4 @@
+.config/libfm/libfm.conf
+.config/pcmanfm/default/pcmanfm.conf
+.config/gtk-3.0/bookmarks
+.config/fastfetch/config.jsonc

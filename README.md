@@ -38,7 +38,7 @@ your old copy is saved in `~/.local/share/ruke-update/backup/<date>/`.
 2. Downloads this repo as a tarball.
 3. `apk update && apk upgrade` (the kernel is pinned: it comes from the USB stick, so apk never replaces it).
 4. Installs everything in `packages.txt`, removes what's in `remove.txt`.
-5. Copies `overlay/system/` to `/` and `overlay/home/` to `/home/<user>/`.
+5. Copies `overlay/system/` to `/`; when the version changed, also `overlay/home/` to `/home/<user>/` (files in `home-seed.txt` only if missing).
 6. Runs each script in `migrations/` once (remembered in `/var/lib/rukeos/migrations.done`), then every script in `hooks/`.
 7. Writes the new version to `/etc/rukeos/version` and `/etc/os-release`, and prints a summary.
 
@@ -50,7 +50,8 @@ install.sh              first-time installer (the wget one-liner)
 packages.txt            apk packages every rukeOS should have
 remove.txt              apk packages to remove
 overlay/system/         files copied to /  (ruke-update itself lives in usr/local/bin/)
-overlay/home/           files copied to the user's home (dock, menu, theme)
+overlay/home/           files copied to the user's home (dock, menu, theme) when a new VERSION arrives
+home-seed.txt           home files only created if missing (apps rewrite them, e.g. PCManFM settings)
 migrations/NNNN-*.sh    run once per machine, in order
 hooks/*.sh              run after every update
 set-owner.sh            point everything at another GitHub owner: ./set-owner.sh NAME
