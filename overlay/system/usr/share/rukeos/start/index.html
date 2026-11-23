@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>rukeOS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#1a1b26;--bg2:#16161e;--surf:#24283b;--fg:#c0caf5;--muted:#565f89;--blue:#7aa2f7;--purple:#bb9af7;--cyan:#7dcfff;--green:#9ece6a;--red:#f7768e;--orange:#ff9e64}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Inter,"DejaVu Sans",sans-serif;color:var(--fg);background:var(--bg);
+ background-image:radial-gradient(ellipse 60% 50% at 15% 10%,rgba(122,162,247,.18),transparent 70%),
+  radial-gradient(ellipse 55% 45% at 90% 90%,rgba(187,154,247,.16),transparent 70%);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.logo{width:72px;height:72px;border-radius:20px;box-shadow:0 10px 30px rgba(122,162,247,.25)}
+h1{font-weight:800;font-size:44px;margin:14px 0 2px;letter-spacing:-1px}
+h1 span{background:linear-gradient(90deg,var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);margin:0 0 26px;font-size:15px}
+#clock{font-size:15px;color:#a9b1d6;margin-bottom:6px;font-variant-numeric:tabular-nums}
+form{width:min(620px,92vw);position:relative}
+input{width:100%;padding:16px 22px 16px 50px;border-radius:16px;border:1px solid rgba(122,162,247,.25);
+ background:rgba(36,40,59,.85);color:var(--fg);font:inherit;font-size:16px;outline:none;transition:.15s}
+input:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(122,162,247,.18)}
+input::placeholder{color:var(--muted)}
+form svg{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(4,128px);gap:14px;margin-top:30px}
+@media (max-width:640px){.grid{grid-template-columns:repeat(2,128px)}}
+a.tile{display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 8px;border-radius:16px;
+ background:rgba(36,40,59,.7);border:1px solid rgba(255,255,255,.04);color:var(--fg);text-decoration:none;font-size:13px;transition:.15s}
+a.tile:hover{background:var(--surf);border-color:rgba(122,162,247,.4);transform:translateY(-2px)}
+.ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:var(--bg2)}
+footer{margin-top:34px;color:var(--muted);font-size:12px}
+footer code{font-family:"JetBrains Mono",monospace;color:#a9b1d6;background:rgba(36,40,59,.8);padding:2px 6px;border-radius:6px}
+</style></head><body>
+<img class="logo" src="../logo-128.png" alt="">
+<h1>ruke<span>OS</span></h1>
+<div id="clock">&nbsp;</div>
+<p class="sub">light. fast. yours.</p>
+<form action="https://duckduckgo.com/" method="get">
+ <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+ <input name="q" placeholder="Search the web or type an address" autofocus autocomplete="off">
+</form>
+<div class="grid">
+ <a class="tile" href="https://www.youtube.com/"><div class="ic" style="background:var(--red)">Y</div>YouTube</a>
+ <a class="tile" href="https://github.com/"><div class="ic" style="background:var(--fg)">G</div>GitHub</a>
+ <a class="tile" href="https://en.wikipedia.org/"><div class="ic" style="background:var(--cyan)">W</div>Wikipedia</a>
+ <a class="tile" href="https://www.reddit.com/"><div class="ic" style="background:var(--orange)">R</div>Reddit</a>
+ <a class="tile" href="https://mail.google.com/"><div class="ic" style="background:var(--blue)">M</div>Gmail</a>
+ <a class="tile" href="https://drive.google.com/"><div class="ic" style="background:var(--green)">D</div>Drive</a>
+ <a class="tile" href="https://pkgs.alpinelinux.org/packages"><div class="ic" style="background:var(--purple)">A</div>Apps (apk)</a>
+ <a class="tile" href="https://github.com/invix-sketch/rukeos"><div class="ic" style="background:linear-gradient(135deg,var(--blue),var(--purple))">r</div>rukeOS</a>
+</div>
+<footer>Update rukeOS anytime: menu &rsaquo; Check for updates &nbsp;or&nbsp; <code>ruke-update</code></footer>
+<script>
+function t(){var d=new Date(),h=d.getHours(),g=h<5?"Good night":h<12?"Good morning":h<18?"Good afternoon":"Good evening";
+document.getElementById("clock").textContent=g+", Judah  \u00b7  "+d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
+t();setInterval(t,10000);
+</script>
+</body></html>

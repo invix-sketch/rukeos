@@ -144,13 +144,14 @@ newv=$(tr -d ' \r\n' < "$SRC/VERSION"); echo "$newv" > /etc/rukeos/version
 for f in /etc/os-release /usr/lib/os-release; do [ -f "$f" ] && sed -i "s/^VERSION_ID=.*/VERSION_ID=$newv/; s/^PRETTY_NAME=.*/PRETTY_NAME=\"rukeOS $newv\"/" "$f"; done
 date +%s > $STATE/last-update; sync
 
-printf '\n%s+------------------------------------------------+%s\n' "$G" "$N"
+printf '\n%s+-------------------------------------------------------%s\n' "$G" "$N"
 printf '%s|%s %sUpdate finished%s\n' "$G" "$N" "$B" "$N"
 printf '%s|%s   rukeOS version : %s -> %s\n' "$G" "$N" "$cur" "$newv"
 printf '%s|%s   system packages: %s upgraded\n' "$G" "$N" "$nup"
-printf '%s|%s   apps installed : %s packages%s\n' "$G" "$N" "$nin" "${missing:+ (${missing# })}"
+napps=$(echo $missing | wc -w)
+printf '%s|%s   new apps       : %s (%s packages incl. dependencies)\n' "$G" "$N" "$napps" "$nin"
 printf '%s|%s   rukeOS files   : %s changed, %s migrations\n' "$G" "$N" "$nf" "$nm"
 printf '%s|%s   log            : %s\n' "$G" "$N" "$LOG"
-printf '%s+------------------------------------------------+%s\n' "$G" "$N"
+printf '%s+-------------------------------------------------------%s\n' "$G" "$N"
 [ "$nf" -gt 0 ] && say "Restart the desktop to see the changes: menu > Restart desktop (or reboot)."
 exit 0

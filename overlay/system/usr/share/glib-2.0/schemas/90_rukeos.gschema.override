@@ -7,3 +7,14 @@ font-name='Inter 10'
 document-font-name='Inter 10'
 monospace-font-name='JetBrains Mono 10'
 enable-animations=false
+
+# GNOME Web (the rukeOS browser)
+[org.gnome.Epiphany]
+homepage-url='file:///usr/share/rukeos/start/index.html'
+restore-session-policy='crashed'
+ask-for-default=false
+default-search-engine='DuckDuckGo'
+
+[org.gnome.Epiphany.web]
+hardware-acceleration-policy='never'
+enable-adblock=true
