@@ -1,5 +1,9 @@
 #!/bin/sh
 # rukeOS web browser launcher: GNOME Web (WebKitGTK) tuned for low RAM and no GPU; NetSurf as fallback.
+# WebKit's sandbox needs a private runtime dir (rukeOS has no logind to make one)
+if [ -z "$XDG_RUNTIME_DIR" ] || [ ! -w "$XDG_RUNTIME_DIR" ]; then
+  export XDG_RUNTIME_DIR=/tmp/runtime-$(id -u); mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+fi
 if command -v epiphany >/dev/null 2>&1; then
   export ADW_DEBUG_COLOR_SCHEME=prefer-dark   # dark libadwaita UI
   export GSK_RENDERER=cairo                    # GTK4 software renderer (no GPU needed, less RAM)
