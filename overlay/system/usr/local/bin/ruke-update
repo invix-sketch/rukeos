@@ -16,9 +16,9 @@ for a in "$@"; do case "$a" in
   *) echo "unknown option: $a (try --help)"; exit 1;; esac; done
 
 # env overrides win over the config files
-E_RAW=$RUKE_RAW; E_TAR=$RUKE_TARBALL
+E_RAW=$RUKE_RAW; E_TAR=$RUKE_TARBALL; E_BR=$RUKE_BRANCH
 [ -r $CONF ] && . $CONF; [ -r $LCONF ] && . $LCONF
-[ -n "$E_RAW" ] && RUKE_RAW=$E_RAW; [ -n "$E_TAR" ] && RUKE_TARBALL=$E_TAR
+[ -n "$E_RAW" ] && RUKE_RAW=$E_RAW; [ -n "$E_TAR" ] && RUKE_TARBALL=$E_TAR; [ -n "$E_BR" ] && RUKE_BRANCH=$E_BR
 : "${RUKE_OWNER:=invix-sketch}" "${RUKE_REPO:=rukeos}" "${RUKE_BRANCH:=main}"
 : "${RUKE_RAW:=https://raw.githubusercontent.com/$RUKE_OWNER/$RUKE_REPO/$RUKE_BRANCH}"
 : "${RUKE_TARBALL:=https://github.com/$RUKE_OWNER/$RUKE_REPO/archive/refs/heads/$RUKE_BRANCH.tar.gz}"

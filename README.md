@@ -73,3 +73,8 @@ and in `install.sh` (`./set-owner.sh NEWNAME` changes both). Testing against ano
   get online with an Ethernet cable or **USB tethering from a phone** first; the update then adds that firmware.
 - The Linux kernel itself can't be updated this way (it lives on the stick); that needs a new ISO.
 - Reflashing the stick with a new ISO also wipes the *Saving between boots* partition, so copy your files off first.
+
+## "Saving between boots" says 0 MB free / Not enough free space?
+Run this once (no reflash needed), then reboot:
+
+    wget -qO- https://raw.githubusercontent.com/invix-sketch/rukeos/main/fix-saving.sh | sudo sh

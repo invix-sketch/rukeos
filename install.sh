@@ -19,6 +19,7 @@ wget -q -T 30 -O /etc/rukeos/update.conf "$RAW/overlay/system/etc/rukeos/update.
 : > /etc/rukeos/update.local.conf
 [ -n "$RUKE_RAW" ] && echo "RUKE_RAW=\"$RUKE_RAW\"" >> /etc/rukeos/update.local.conf
 [ -n "$RUKE_TARBALL" ] && echo "RUKE_TARBALL=\"$RUKE_TARBALL\"" >> /etc/rukeos/update.local.conf
+[ "$RUKE_BRANCH" != main ] && echo "RUKE_BRANCH=\"$RUKE_BRANCH\"" >> /etc/rukeos/update.local.conf
 [ "$RUKE_OWNER" != invix-sketch ] && echo "RUKE_OWNER=\"$RUKE_OWNER\"" >> /etc/rukeos/update.local.conf
 echo "==> ruke-update installed. Running the first update (this downloads ~100 MB, a few minutes)..."
 exec /usr/local/bin/ruke-update --yes "$@"
