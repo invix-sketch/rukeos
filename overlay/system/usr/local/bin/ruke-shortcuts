@@ -1,0 +1,4 @@
+#!/bin/sh
+# Apply or ensure per-user JWM keyboard shortcuts.
+export NO_AT_BRIDGE=1 GTK_A11Y=none
+exec /usr/bin/python3 /usr/share/rukeos/settings/shortcuts.py "$@"

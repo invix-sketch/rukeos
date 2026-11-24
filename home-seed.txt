@@ -4,3 +4,5 @@
 .config/fastfetch/config.jsonc
 .config/mimeapps.list
 .config/mpv/mpv.conf
+.config/rukeos/shortcuts.json
+.config/rukeos/jwm-keys.xml

@@ -8,7 +8,7 @@ Web Browser,ruke-browser,/usr/share/icons/hicolor/24x24/apps/ruke-browser.png
 Lite Browser (NetSurf),netsurf,/usr/share/icons/Papirus-Dark/24x24/apps/netsurf.svg
 ^sep(System)
 Wi-Fi,ruke-wifi,/usr/share/icons/hicolor/24x24/apps/ruke-network.png
-Task Manager,xterm -T Tasks -e htop,/usr/share/icons/Papirus-Dark/24x24/apps/utilities-system-monitor.svg
+Task Manager,xterm -T Tasks -e htop,/usr/share/icons/hicolor/24x24/apps/ruke-task-manager.png
 Settings,ruke-settings,/usr/share/icons/hicolor/24x24/apps/ruke-settings.png
 Saving between boots,xterm -T "Saving between boots" -geometry 90x16 -hold -e rukeos-persistence,/usr/share/icons/Papirus-Dark/24x24/actions/document-save.svg
 Toggle visual effects,sh -c 'pkill -x picom || picom -b --config /home/judah/.config/picom/picom.conf',/usr/share/icons/Papirus-Dark/24x24/apps/preferences-desktop-effects.svg

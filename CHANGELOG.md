@@ -1,6 +1,8 @@
 # rukeOS changelog
 
 ## 0.4.2
+- Purple Task Manager icon in the dock and application menu, matching the rest of the rukeOS icon pack.
+- Default keyboard shortcuts: Super+Space for the menu, Ctrl+Alt+T terminal, Super+E files, Super+B browser, Super+I settings, Ctrl+Shift+Esc task manager, Super+L lock, Alt+F4, Alt+Tab, and PrtSc for a screenshot (saved to ~/Pictures). Settings → Keyboard shortcuts lists them and lets you add, edit, or remove custom shortcuts (key combination + command). Changes are saved per user and applied by regenerating the JWM keys and restarting JWM. Existing installs get this through ruke-update.
 - Desktop icons: files and shortcuts in ~/Desktop show on the wallpaper (pcmanfm --desktop). Right-click the desktop for New folder, New text file, Open terminal here, Add app shortcut, and the rukeOS application menu. Seeded shortcuts: Files, Terminal, Browser, Settings.
 - Files (PCManFM, GTK3) and other GTK apps use a system-wide Tokyo Night dark theme (rukeOS-dark) and the purple rukeOS icon theme, applied to existing sticks by ruke-update.
 - Lock screen: a Tokyo Night / purple locker (i3lock-color) that asks for your user password. Lock with Super+L, the Lock button in the quick panel, or the menu. Settings → Security lets you set or change your password, pick an auto-lock idle time (or Off), and lock on wake from sleep. Console switching is blocked while the lock screen is up.

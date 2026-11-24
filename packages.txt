@@ -29,3 +29,5 @@ curl
 lsblk
 networkmanager-cli
 ca-certificates
+# Screenshot (PrtSc)
+scrot

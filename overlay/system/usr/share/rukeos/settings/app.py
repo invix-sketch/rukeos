@@ -57,6 +57,12 @@ LIGHT_PALETTE = {
 
 SHARE = "/usr/share/rukeos"
 ICON_DIR = os.environ.get("RUKE_ICON_DIR", SHARE + "/icons")
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import shortcuts as ruke_shortcuts
+except ImportError:
+    ruke_shortcuts = None
 WALLPAPER_DEFAULT = "/usr/share/backgrounds/rukeos.png"
 UPDATE_LOG = "/var/log/ruke-update.log"
 VERSION_FILE = "/etc/rukeos/version"
@@ -152,6 +158,18 @@ switch:checked, switch:checked:hover, switch:checked:backdrop {
 switch slider { min-width: 18px; min-height: 18px; }
 .swatch { border-radius: 16px; border: 2px solid transparent; min-width: 28px; min-height: 28px; padding: 0; }
 .swatch.selected { border-color: #ffffff; }
+
+.shortcut-keys {
+  background-color: #16161e;
+  border-radius: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(123,79,214,0.30);
+}
+.shortcut-keys label {
+  font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+  color: #c0caf5;
+}
+.shortcut-row { border-radius: 8px; padding: 2px 0; }
 """
 
 PROGRESS_PATTERNS = [
@@ -915,6 +933,127 @@ def maybe_screenshot(win, path):
 
 def load_css_and_display():
     apply_css()
+
+def shortcut_edit_dialog(parent, title, label, keys, command, custom=True, command_editable=True):
+    """Return (label, keys, command) or None if cancelled."""
+    dialog = Gtk.Dialog(title=title, transient_for=parent, modal=True, flags=0)
+    dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+    dialog.add_button("Save", Gtk.ResponseType.OK)
+    dialog.set_default_response(Gtk.ResponseType.OK)
+    dialog.set_default_size(440, -1)
+    body = dialog.get_content_area()
+    body.set_spacing(10)
+    body.set_margin_start(16)
+    body.set_margin_end(16)
+    body.set_margin_top(12)
+    body.set_margin_bottom(8)
+
+    label_entry = Gtk.Entry()
+    label_entry.set_text(label or "")
+    label_entry.set_placeholder_text("Name")
+    if custom:
+        body.pack_start(Gtk.Label(label="Name", xalign=0), False, False, 0)
+        body.pack_start(label_entry, False, False, 0)
+
+    body.pack_start(Gtk.Label(label="Shortcut", xalign=0), False, False, 0)
+    combo_btn = Gtk.Button(label=keys or "Click, then press a shortcut")
+    captured = {"keys": keys or "", "listening": False}
+    combo_btn.set_hexpand(True)
+
+    def _set_btn():
+        if captured["listening"]:
+            combo_btn.set_label("Press a shortcut…  (Esc to cancel)")
+        elif captured["keys"]:
+            combo_btn.set_label(captured["keys"])
+        else:
+            combo_btn.set_label("Click, then press a shortcut")
+
+    def _start(_btn=None):
+        captured["listening"] = True
+        _set_btn()
+        dialog.grab_add()
+        dialog.present()
+
+    def _on_key(_w, event):
+        if not captured["listening"]:
+            return False
+        kv = event.keyval
+        if kv in (
+            Gdk.KEY_Shift_L, Gdk.KEY_Shift_R,
+            Gdk.KEY_Control_L, Gdk.KEY_Control_R,
+            Gdk.KEY_Alt_L, Gdk.KEY_Alt_R,
+            Gdk.KEY_Meta_L, Gdk.KEY_Meta_R,
+            Gdk.KEY_Super_L, Gdk.KEY_Super_R,
+            Gdk.KEY_Hyper_L, Gdk.KEY_Hyper_R,
+            Gdk.KEY_ISO_Level3_Shift, Gdk.KEY_Caps_Lock, Gdk.KEY_Num_Lock,
+        ):
+            return True
+        state = event.state
+        mods = []
+        if state & (Gdk.ModifierType.SUPER_MASK | Gdk.ModifierType.MOD4_MASK):
+            mods.append("Super")
+        if state & Gdk.ModifierType.CONTROL_MASK:
+            mods.append("Ctrl")
+        if state & Gdk.ModifierType.MOD1_MASK:
+            mods.append("Alt")
+        if state & Gdk.ModifierType.SHIFT_MASK:
+            mods.append("Shift")
+        if kv in (Gdk.KEY_Escape, Gdk.KEY_ISO_Left_Tab) and not mods:
+            captured["listening"] = False
+            dialog.grab_remove()
+            _set_btn()
+            return True
+        name = Gdk.keyval_name(kv) or ""
+        lower = Gdk.keyval_to_lower(kv)
+        lname = Gdk.keyval_name(lower) or name
+        combo = "+".join(mods + [lname])
+        if ruke_shortcuts is not None:
+            combo = ruke_shortcuts.normalize_keys(combo)
+        captured["keys"] = combo
+        captured["listening"] = False
+        dialog.grab_remove()
+        _set_btn()
+        return True
+
+    combo_btn.connect("clicked", _start)
+    dialog.connect("key-press-event", _on_key)
+    body.pack_start(combo_btn, False, False, 0)
+
+    cmd_entry = Gtk.Entry()
+    cmd_entry.set_text(command or "")
+    cmd_entry.set_placeholder_text("Command, for example xterm")
+    if command_editable:
+        body.pack_start(Gtk.Label(label="Command", xalign=0), False, False, 0)
+        body.pack_start(cmd_entry, False, False, 0)
+    else:
+        cmd_entry.set_sensitive(False)
+
+    msg = Gtk.Label(xalign=0)
+    msg.get_style_context().add_class("error")
+    msg.set_line_wrap(True)
+    body.pack_start(msg, False, False, 0)
+    dialog.show_all()
+
+    while True:
+        resp = dialog.run()
+        if resp != Gtk.ResponseType.OK:
+            dialog.destroy()
+            return None
+        keys_out = (captured["keys"] or "").strip()
+        cmd_out = (cmd_entry.get_text() or "").strip() if command_editable else (command or "").strip()
+        label_out = (label_entry.get_text() or "").strip() if custom else (label or "")
+        if not keys_out:
+            msg.set_text("Press a key combination first.")
+            continue
+        if command_editable and not cmd_out:
+            msg.set_text("Enter a command to run.")
+            continue
+        if ruke_shortcuts is not None:
+            keys_out = ruke_shortcuts.normalize_keys(keys_out)
+        dialog.destroy()
+        return (label_out, keys_out, cmd_out)
+
+
 class SettingsWindow(Gtk.Window):
     def __init__(self, page="updates", demo=None, screenshot=None, prompt_password=False):
         Gtk.Window.__init__(self, title="Settings")
@@ -923,7 +1062,12 @@ class SettingsWindow(Gtk.Window):
             GLib.set_prgname("RukeSettings")
         except Exception:
             pass
-        self.set_default_size(760, 520)
+        if page == "shortcuts" and screenshot:
+            self.set_default_size(760, 920)
+        elif page == "shortcuts":
+            self.set_default_size(760, 640)
+        else:
+            self.set_default_size(760, 520)
         self.set_position(Gtk.WindowPosition.CENTER)
         self.connect("destroy", Gtk.main_quit)
         pb = icon_pixbuf("settings", 48)
@@ -954,7 +1098,7 @@ class SettingsWindow(Gtk.Window):
         self.stack.set_vexpand(True)
         self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.nav = {}
-        for key, label in (("updates", "Updates"), ("customization", "Customization"), ("security", "Security"), ("help", "Help")):
+        for key, label in (("updates", "Updates"), ("customization", "Customization"), ("security", "Security"), ("shortcuts", "Shortcuts"), ("help", "Help")):
             b = Gtk.Button(label=label)
             b.set_relief(Gtk.ReliefStyle.NONE)
             child = b.get_child()
@@ -978,6 +1122,7 @@ class SettingsWindow(Gtk.Window):
         self.stack.add_titled(self._build_updates(), "updates", "Updates")
         self.stack.add_titled(self._build_customization(), "customization", "Customization")
         self.stack.add_titled(self._build_security(), "security", "Security")
+        self.stack.add_titled(self._build_shortcuts(), "shortcuts", "Shortcuts")
         self.stack.add_titled(self._build_help(), "help", "Help")
         self._page = page if page in self.nav else "updates"
         self._goto(None, self._page)
@@ -1477,6 +1622,229 @@ class SettingsWindow(Gtk.Window):
                 stderr=subprocess.DEVNULL,
             )
 
+
+    def _build_shortcuts(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        box.pack_start(heading("Keyboard shortcuts"), False, False, 0)
+        box.pack_start(
+            muted(
+                "Default shortcuts are listed below. Add your own, or edit a combination. "
+                "Changes are saved for your account and applied to the desktop right away."
+            ),
+            False,
+            False,
+            0,
+        )
+        top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        add = Gtk.Button(label="Add shortcut")
+        add.get_style_context().add_class("suggested-action")
+        add.connect("clicked", self._on_add_shortcut)
+        top.pack_start(add, False, False, 0)
+        self.shortcuts_msg = Gtk.Label(xalign=0)
+        self.shortcuts_msg.get_style_context().add_class("muted")
+        self.shortcuts_msg.set_line_wrap(True)
+        self.shortcuts_msg.set_hexpand(True)
+        top.pack_start(self.shortcuts_msg, True, True, 0)
+        box.pack_start(top, False, False, 0)
+
+        self._shortcuts_defaults = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self._shortcuts_custom = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        fr, inner = card()
+        inner.pack_start(heading("Defaults"), False, False, 0)
+        inner.pack_start(self._shortcuts_defaults, False, False, 0)
+        box.pack_start(fr, False, False, 0)
+        fr2, inner2 = card()
+        inner2.pack_start(heading("Custom"), False, False, 0)
+        inner2.pack_start(self._shortcuts_custom, False, False, 0)
+        box.pack_start(fr2, False, False, 0)
+        self._refresh_shortcuts()
+        return box
+
+    def _shortcut_keys_badge(self, keys):
+        wrap = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        wrap.get_style_context().add_class("shortcut-keys")
+        lab = Gtk.Label(label=keys or "—")
+        lab.set_single_line_mode(True)
+        wrap.pack_start(lab, False, False, 0)
+        wrap.set_valign(Gtk.Align.CENTER)
+        return wrap
+
+    def _shortcut_row(self, entry, custom=False):
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        row.get_style_context().add_class("shortcut-row")
+        row.set_margin_top(2)
+        row.set_margin_bottom(2)
+        row.pack_start(self._shortcut_keys_badge(entry.get("keys") or ""), False, False, 0)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        name = Gtk.Label(label=entry.get("label") or "", xalign=0)
+        name.set_hexpand(True)
+        col.pack_start(name, False, False, 0)
+        # Show the command on custom rows, or on a default the user has changed.
+        if custom or entry.get("overridden"):
+            cmd = entry.get("command") or ""
+            if cmd.startswith("jgmenu "):
+                cmd = "jgmenu"
+            if cmd and cmd != (entry.get("label") or ""):
+                sub = Gtk.Label(label=cmd, xalign=0)
+                sub.get_style_context().add_class("muted")
+                sub.set_ellipsize(Pango.EllipsizeMode.END)
+                col.pack_start(sub, False, False, 0)
+        row.pack_start(col, True, True, 0)
+        edit = Gtk.Button(label="Edit")
+        edit.set_relief(Gtk.ReliefStyle.NONE)
+        edit.connect("clicked", self._on_edit_shortcut, entry, custom)
+        row.pack_start(edit, False, False, 0)
+        if custom:
+            rm = Gtk.Button(label="Remove")
+            rm.set_relief(Gtk.ReliefStyle.NONE)
+            rm.connect("clicked", self._on_remove_shortcut, entry)
+            row.pack_start(rm, False, False, 0)
+        elif entry.get("overridden"):
+            rst = Gtk.Button(label="Reset")
+            rst.set_relief(Gtk.ReliefStyle.NONE)
+            rst.connect("clicked", self._on_reset_shortcut, entry)
+            row.pack_start(rst, False, False, 0)
+        return row
+
+    def _refresh_shortcuts(self, msg=None, ok=True):
+        if not hasattr(self, "_shortcuts_defaults"):
+            return
+        for box in (self._shortcuts_defaults, self._shortcuts_custom):
+            for child in list(box.get_children()):
+                box.remove(child)
+        if ruke_shortcuts is None:
+            self._shortcuts_defaults.pack_start(muted("Shortcut helper is missing."), False, False, 0)
+            self._shortcuts_defaults.show_all()
+            return
+        entries = ruke_shortcuts.resolved_entries()
+        defaults = [e for e in entries if e.get("builtin")]
+        customs = [e for e in entries if not e.get("builtin")]
+        for e in defaults:
+            self._shortcuts_defaults.pack_start(self._shortcut_row(e, custom=False), False, False, 0)
+        if customs:
+            for e in customs:
+                self._shortcuts_custom.pack_start(self._shortcut_row(e, custom=True), False, False, 0)
+        else:
+            self._shortcuts_custom.pack_start(muted("No custom shortcuts yet."), False, False, 0)
+        self._shortcuts_defaults.show_all()
+        self._shortcuts_custom.show_all()
+        if hasattr(self, "shortcuts_msg"):
+            if msg:
+                self.shortcuts_msg.set_text(msg)
+                ctx = self.shortcuts_msg.get_style_context()
+                ctx.remove_class("muted")
+                ctx.remove_class("ok")
+                ctx.remove_class("error")
+                ctx.add_class("ok" if ok else "error")
+            else:
+                self.shortcuts_msg.set_text("")
+                ctx = self.shortcuts_msg.get_style_context()
+                ctx.remove_class("ok")
+                ctx.remove_class("error")
+                ctx.add_class("muted")
+
+    def _apply_shortcuts_now(self, msg="Shortcuts applied."):
+        if ruke_shortcuts is None:
+            self._refresh_shortcuts("Couldn't apply shortcuts.", ok=False)
+            return
+        try:
+            ruke_shortcuts.apply_shortcuts(restart=True)
+        except Exception:
+            self._refresh_shortcuts("Saved, but couldn't restart the desktop.", ok=False)
+            return
+        self._refresh_shortcuts(msg, ok=True)
+
+    def _on_add_shortcut(self, _btn):
+        if ruke_shortcuts is None:
+            return
+        result = shortcut_edit_dialog(self, title="Add shortcut", label="", keys="", command="", custom=True)
+        if not result:
+            return
+        label, keys, command = result
+        conflict = ruke_shortcuts.find_conflict(keys, ruke_shortcuts.resolved_entries())
+        if conflict:
+            self._refresh_shortcuts(
+                "That combination is already used by %s." % (conflict.get("label") or "another shortcut"),
+                ok=False,
+            )
+            return
+        cfg = ruke_shortcuts.load_config()
+        cfg.setdefault("custom", []).append({
+            "id": ruke_shortcuts.new_custom_id(),
+            "label": label or command,
+            "keys": keys,
+            "command": command,
+        })
+        ruke_shortcuts.save_config(cfg)
+        self._apply_shortcuts_now("Shortcut added.")
+
+    def _on_edit_shortcut(self, _btn, entry, custom):
+        if ruke_shortcuts is None:
+            return
+        result = shortcut_edit_dialog(
+            self,
+            title="Edit shortcut",
+            label=entry.get("label") or "",
+            keys=entry.get("keys") or "",
+            command=entry.get("command") or "",
+            custom=custom,
+            command_editable=(custom or entry.get("kind") == "exec"),
+        )
+        if not result:
+            return
+        label, keys, command = result
+        conflict = ruke_shortcuts.find_conflict(keys, ruke_shortcuts.resolved_entries(), skip_id=entry.get("id"))
+        if conflict:
+            self._refresh_shortcuts(
+                "That combination is already used by %s." % (conflict.get("label") or "another shortcut"),
+                ok=False,
+            )
+            return
+        cfg = ruke_shortcuts.load_config()
+        if custom:
+            found = False
+            for c in cfg.get("custom") or []:
+                if c.get("id") == entry.get("id"):
+                    c["label"] = label or command
+                    c["keys"] = keys
+                    c["command"] = command
+                    found = True
+                    break
+            if not found:
+                return
+        else:
+            ov = {}
+            default = ruke_shortcuts._DEFAULT_BY_ID.get(entry.get("id")) or {}
+            if keys and ruke_shortcuts.normalize_keys(keys) != ruke_shortcuts.normalize_keys(default.get("keys") or ""):
+                ov["keys"] = keys
+            if entry.get("kind") == "exec":
+                default_cmd = ruke_shortcuts.expand_command(default.get("command") or "")
+                if command and command != default_cmd:
+                    ov["command"] = command
+            overrides = cfg.setdefault("overrides", {})
+            if ov:
+                overrides[entry["id"]] = ov
+            else:
+                overrides.pop(entry["id"], None)
+        ruke_shortcuts.save_config(cfg)
+        self._apply_shortcuts_now("Shortcut updated.")
+
+    def _on_remove_shortcut(self, _btn, entry):
+        if ruke_shortcuts is None:
+            return
+        cfg = ruke_shortcuts.load_config()
+        cfg["custom"] = [c for c in (cfg.get("custom") or []) if c.get("id") != entry.get("id")]
+        ruke_shortcuts.save_config(cfg)
+        self._apply_shortcuts_now("Shortcut removed.")
+
+    def _on_reset_shortcut(self, _btn, entry):
+        if ruke_shortcuts is None:
+            return
+        cfg = ruke_shortcuts.load_config()
+        (cfg.setdefault("overrides", {})).pop(entry.get("id"), None)
+        ruke_shortcuts.save_config(cfg)
+        self._apply_shortcuts_now("Shortcut reset.")
+
     def _build_help(self):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         box.pack_start(heading("Help"), False, False, 0)
@@ -1518,12 +1886,14 @@ class SettingsWindow(Gtk.Window):
         )
         section(
             "Keyboard shortcuts",
-            "<b>Alt</b>+<b>Tab</b>  switch windows\n"
-            "<b>Alt</b>+<b>F4</b>  close the window\n"
-            "<b>Super</b>+<b>Enter</b>  or  <b>Ctrl</b>+<b>Alt</b>+<b>T</b>  terminal\n"
-            "<b>Super</b>+<b>E</b>  files\n"
-            "<b>Super</b>+<b>L</b>  lock the screen\n"
+            "View and change these in Settings \u2192 <b>Shortcuts</b>.\n"
             "<b>Super</b>+<b>Space</b>  application menu\n"
+            "<b>Ctrl</b>+<b>Alt</b>+<b>T</b>  or  <b>Super</b>+<b>Enter</b>  terminal\n"
+            "<b>Super</b>+<b>E</b>  files    <b>Super</b>+<b>B</b>  browser    <b>Super</b>+<b>I</b>  settings\n"
+            "<b>Ctrl</b>+<b>Shift</b>+<b>Esc</b>  task manager\n"
+            "<b>Super</b>+<b>L</b>  lock the screen\n"
+            "<b>Alt</b>+<b>Tab</b>  switch windows    <b>Alt</b>+<b>F4</b>  close the window\n"
+            "<b>PrtSc</b>  screenshot (saved to Pictures)\n"
             "<b>Super</b>+<b>Up</b>  maximize    <b>Super</b>+<b>Down</b>  minimize",
         )
         ver = os_version()
@@ -3007,7 +3377,7 @@ def write_pid(name):
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="ruke-settings", description="rukeOS Settings")
-    p.add_argument("--page", choices=("updates", "customization", "security", "help"), default="updates")
+    p.add_argument("--page", choices=("updates", "customization", "security", "shortcuts", "help"), default="updates")
     p.add_argument("--quickpanel", action="store_true", help="open the clock quick panel")
     p.add_argument("--wifi", action="store_true", help="open the Wi-Fi menu")
     p.add_argument("--preview-taskbar", action="store_true", help="render a dock/taskbar preview and exit")

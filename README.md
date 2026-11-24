@@ -24,6 +24,7 @@ When it says *Update finished*, pick **menu > Restart desktop**. The dock's glob
 - Click the **Wi-Fi icon** (top bar or dock) for the Wi-Fi menu. Click the **clock** for the quick panel: Wi-Fi, volume, brightness, night light, and power.
 - Files and shortcuts on the **Desktop** show as icons on the wallpaper. Right-click the desktop for New folder, New text file, Open terminal here, Add app shortcut, and the rukeOS menu.
 - **Lock** the screen with Super+L, the Lock button, or the menu. Set a password and auto-lock in Settings → Security.
+- Keyboard shortcuts (Super+Space menu, Ctrl+Alt+T terminal, Super+E files, Super+B browser, Super+I settings, Ctrl+Shift+Esc task manager, Super+L lock, Alt+F4, Alt+Tab, PrtSc) can be viewed and customized in Settings → Keyboard shortcuts.
 - **Video** and **Music** on the dock play files in mpv. Double-click a video or song in Files to play it.
 
 | command | what it does |

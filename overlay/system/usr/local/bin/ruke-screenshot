@@ -1,0 +1,18 @@
+#!/bin/sh
+# Capture the screen to ~/Pictures (or $RUKE_SCREENSHOT_DIR / $XDG_PICTURES_DIR).
+dir="${RUKE_SCREENSHOT_DIR:-}"
+if [ -z "$dir" ]; then
+  dir="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+fi
+mkdir -p "$dir"
+file="$dir/screenshot-$(date +%Y%m%d-%H%M%S).png"
+if command -v scrot >/dev/null 2>&1; then
+  exec scrot "$file"
+fi
+if command -v maim >/dev/null 2>&1; then
+  exec maim "$file"
+fi
+if command -v import >/dev/null 2>&1; then
+  exec import -window root "$file"
+fi
+exit 1
