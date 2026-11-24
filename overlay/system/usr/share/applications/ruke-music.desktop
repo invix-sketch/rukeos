@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Music
+Comment=Play music
+Exec=ruke-music %U
+Icon=ruke-music
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+MimeType=audio/mpeg;audio/flac;audio/ogg;audio/x-vorbis+ogg;audio/opus;audio/x-wav;audio/mp4;audio/aac;audio/x-ms-wma;audio/x-aiff;audio/x-ape;
+StartupNotify=true

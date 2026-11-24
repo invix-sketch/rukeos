@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Video
+Comment=Play videos
+Exec=ruke-video %U
+Icon=ruke-video
+Terminal=false
+Categories=AudioVideo;Video;Player;
+MimeType=video/mp4;video/x-matroska;video/webm;video/x-msvideo;video/quicktime;video/ogg;video/x-m4v;video/x-ms-wmv;video/x-flv;video/mpeg;video/mp2t;video/3gpp;video/x-ogm+ogg;
+StartupNotify=true

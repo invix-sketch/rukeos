@@ -18,12 +18,16 @@ When it says *Update finished*, pick **menu > Restart desktop**. The dock's glob
 
 ## After that
 
-- **menu > Check for updates**, or run `ruke-update` in a terminal.
+- **menu > Settings** (or **Check for updates**): the Updates page checks and applies updates in the background, with a spinner and progress bar. No terminal window is opened.
+- You can still run `ruke-update` in a terminal if you want to watch the log.
 - rukeOS also checks once a day after you log in and asks before installing anything.
+- Click the **clock** (or the Wi-Fi icon next to it) for the quick panel: Wi-Fi, volume, brightness, night light, and power.
+- **Video** and **Music** on the dock play files in mpv. Double-click a video or song in Files to play it.
 
 | command | what it does |
 |---|---|
-| `ruke-update` | check, ask, then update everything |
+| `ruke-settings` | graphical Settings (Updates, Customization, Help) |
+| `ruke-update` | check, ask, then update everything (terminal) |
 | `ruke-update --yes` | update without asking |
 | `ruke-update --check` | only say if a new rukeOS version is out |
 | `ruke-update --force` | re-apply the rukeOS files even if already up to date |
@@ -59,7 +63,7 @@ set-owner.sh            point everything at another GitHub owner: ./set-owner.sh
 
 ## Shipping an update (for the maintainer)
 
-Change files, bump `VERSION` (e.g. `0.3` -> `0.3.1`), commit, push to `main`.
+Change files, bump `VERSION` (e.g. `0.4` -> `0.4.1`), commit, push to `main`.
 Every rukeOS stick sees it the next time it checks. Keep this repo public and **never put passwords or tokens in it**.
 
 The GitHub owner is set in one variable per file: `RUKE_OWNER` in `overlay/system/etc/rukeos/update.conf`

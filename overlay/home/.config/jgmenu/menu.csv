@@ -1,15 +1,18 @@
-^sep(rukeOS 0.3)
+^sep(rukeOS 0.4)
 Terminal,xterm,/usr/share/icons/Papirus-Dark/24x24/apps/utilities-terminal.svg
 Files,pcmanfm,/usr/share/icons/Papirus-Dark/24x24/apps/system-file-manager.svg
 Text Editor,mousepad,/usr/share/icons/Papirus-Dark/24x24/apps/accessories-text-editor.svg
+Video,ruke-video,/usr/share/icons/hicolor/24x24/apps/ruke-video.png
+Music,ruke-music,/usr/share/icons/hicolor/24x24/apps/ruke-music.png
 Web Browser,ruke-browser,/usr/share/icons/Papirus-Dark/24x24/actions/web-browser.svg
 Lite Browser (NetSurf),netsurf,/usr/share/icons/Papirus-Dark/24x24/apps/netsurf.svg
 ^sep(System)
 Wi-Fi and Network,xterm -T Network -e nmtui,/usr/share/icons/Papirus-Dark/24x24/apps/preferences-system-network.svg
 Task Manager,xterm -T Tasks -e htop,/usr/share/icons/Papirus-Dark/24x24/apps/utilities-system-monitor.svg
+Settings,ruke-settings,/usr/share/icons/hicolor/24x24/apps/ruke-settings.png
 Saving between boots,xterm -T "Saving between boots" -geometry 90x16 -hold -e rukeos-persistence,/usr/share/icons/Papirus-Dark/24x24/actions/document-save.svg
 Toggle visual effects,sh -c 'pkill -x picom || picom -b --config /home/judah/.config/picom/picom.conf',/usr/share/icons/Papirus-Dark/24x24/apps/preferences-desktop-effects.svg
-Check for updates,xterm -T "rukeOS update" -geometry 92x30 -hold -e ruke-update,/usr/share/icons/Papirus-Dark/24x24/apps/system-software-update.svg
+Check for updates,ruke-settings --page updates,/usr/share/icons/Papirus-Dark/24x24/apps/system-software-update.svg
 About rukeOS,xterm -T About -geometry 74x19 -hold -e fastfetch,/usr/share/icons/Papirus-Dark/24x24/actions/help-about.svg
 ^sep()
 Restart desktop,jwm -restart,/usr/share/icons/Papirus-Dark/24x24/actions/view-refresh.svg

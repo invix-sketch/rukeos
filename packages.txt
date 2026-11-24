@@ -5,6 +5,11 @@ pcmanfm
 epiphany
 dconf
 gst-plugins-good
+# Settings app (GTK3 via PyGObject) + lock screen for the quick panel
+py3-gobject3
+slock
+# Video / Music player (ffmpeg codecs come in as mpv dependencies)
+mpv
 # Wi-Fi / Bluetooth firmware that 0.2 lacked (common in HP laptops)
 linux-firmware-rtw88
 linux-firmware-rtw89

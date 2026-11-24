@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Comment=rukeOS settings, updates, and help
+Exec=ruke-settings
+Icon=ruke-settings
+Terminal=false
+Categories=Settings;DesktopSettings;
+StartupNotify=true
+StartupWMClass=RukeSettings

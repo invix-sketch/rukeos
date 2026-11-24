@@ -2,3 +2,5 @@
 .config/pcmanfm/default/pcmanfm.conf
 .config/gtk-3.0/bookmarks
 .config/fastfetch/config.jsonc
+.config/mimeapps.list
+.config/mpv/mpv.conf

@@ -1,5 +1,11 @@
 # rukeOS changelog
 
+## 0.4
+- Settings app (Updates, Customization, Help): Check for updates runs in the background with a spinner and progress bar — no terminal window.
+- Wi-Fi icon in the top bar (next to the clock) shows connected / signal / disconnected. Click the clock (or the icon) for the quick panel: Wi-Fi, volume, brightness, night light, airplane mode, battery, and Settings / Lock / Log out / Restart / Power off.
+- Video and Music apps play files in mpv (dark theme, low memory). Double-click a video or song in Files to play it.
+- Customization: wallpaper, accent color, dark/light, font size.
+
 ## 0.3
 - Fix "Saving between boots" on sticks where the partition table went missing after flashing (0 MB free): `fix-saving.sh` / new `rukeos-persistence` rebuilds the table (boot code untouched) and adds the save partition.
 - `lsblk` added; `RUKE_BRANCH` is remembered by install.sh.

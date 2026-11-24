@@ -4,11 +4,14 @@
     <Program icon="utilities-terminal" label="Terminal">xterm</Program>
     <Program icon="system-file-manager" label="Files">pcmanfm</Program>
     <Program icon="accessories-text-editor" label="Text Editor">mousepad</Program>
+    <Program icon="ruke-video" label="Video">ruke-video</Program>
+    <Program icon="ruke-music" label="Music">ruke-music</Program>
     <Program icon="web-browser" label="Web Browser">ruke-browser</Program>
     <Program icon="netsurf" label="Lite Browser (NetSurf)">netsurf</Program>
     <Separator/>
     <Program icon="preferences-system-network" label="Wi-Fi &amp; Network">xterm -T Network -e nmtui</Program>
     <Program icon="utilities-system-monitor" label="Task Manager">xterm -T Tasks -e htop</Program>
+    <Program icon="ruke-settings" label="Settings">ruke-settings</Program>
     <Separator/>
     <Restart label="Restart desktop" icon="view-refresh"/>
     <Program label="Reboot" icon="system-reboot">sudo reboot</Program>
@@ -20,7 +23,9 @@
     <Spacer width="10"/>
     <TaskList maxwidth="200"/>
     <Spacer width="6"/>
-    <Clock format="%a %d %b   %H:%M"><Button mask="123">exec:xterm -T Calendar -geometry 24x10 -hold -e cal</Button></Clock>
+    <Swallow name="RukeStatus" width="28">ruke-status</Swallow>
+    <Spacer width="6"/>
+    <Clock format="%a %d %b   %H:%M"><Button mask="123">exec:ruke-quickpanel</Button></Clock>
     <Spacer width="10"/>
   </Tray>
 
@@ -30,6 +35,9 @@
     <TrayButton popup="Files" icon="system-file-manager">exec:pcmanfm</TrayButton>
     <TrayButton popup="Web Browser" icon="web-browser">exec:ruke-browser</TrayButton>
     <TrayButton popup="Text Editor" icon="accessories-text-editor">exec:mousepad</TrayButton>
+    <TrayButton popup="Video" icon="ruke-video">exec:ruke-video</TrayButton>
+    <TrayButton popup="Music" icon="ruke-music">exec:ruke-music</TrayButton>
+    <TrayButton popup="Settings" icon="ruke-settings">exec:ruke-settings</TrayButton>
     <TrayButton popup="Wi-Fi &amp; Network" icon="preferences-system-network">exec:xterm -T Network -e nmtui</TrayButton>
     <TrayButton popup="Task Manager" icon="utilities-system-monitor">exec:xterm -T Tasks -e htop</TrayButton>
     <TrayButton popup="Volume" icon="multimedia-volume-control">exec:xterm -T Volume -e alsamixer</TrayButton>

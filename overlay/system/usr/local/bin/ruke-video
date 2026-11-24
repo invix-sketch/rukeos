@@ -1,0 +1,4 @@
+#!/bin/sh
+# Open a video (file picker if none given) and play it in mpv.
+export NO_AT_BRIDGE=1 GTK_A11Y=none
+exec /usr/bin/python3 /usr/share/rukeos/settings/app.py --play video "$@"

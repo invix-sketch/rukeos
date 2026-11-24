@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <defs>
+      <clipPath id="tile">
+        <rect x="0" y="0" width="512" height="512" rx="102" ry="102"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#tile)">
+      <rect width="512" height="512" fill="#000000"/>
+      <polygon points="512,0 512,512 0,512" fill="#555555"/>
+    </g>
+    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="none" stroke="#6A35D0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+      
+      <circle cx="12" cy="12" r="3.05"/>
+      <path d="M8.525 5.981 L9.983 2.512 L14.017 2.512 L15.475 5.981 L19.209 5.509 L21.225 9.003 L18.950 12.000 L21.225 14.997 L19.209 18.491 L15.475 18.019 L14.017 21.488 L9.983 21.488 L8.525 18.019 L4.791 18.491 L2.775 14.997 L5.050 12.000 L2.775 9.003 L4.791 5.509 Z"/>
+    
+    </g>
+    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="none" stroke="#7B4FD6" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round">
+      
+      <circle cx="12" cy="12" r="3.05"/>
+      <path d="M8.525 5.981 L9.983 2.512 L14.017 2.512 L15.475 5.981 L19.209 5.509 L21.225 9.003 L18.950 12.000 L21.225 14.997 L19.209 18.491 L15.475 18.019 L14.017 21.488 L9.983 21.488 L8.525 18.019 L4.791 18.491 L2.775 14.997 L5.050 12.000 L2.775 9.003 L4.791 5.509 Z"/>
+    
+    </g>
+</svg>
