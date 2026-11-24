@@ -9,7 +9,7 @@
     <Program icon="web-browser" label="Web Browser">ruke-browser</Program>
     <Program icon="netsurf" label="Lite Browser (NetSurf)">netsurf</Program>
     <Separator/>
-    <Program icon="preferences-system-network" label="Wi-Fi &amp; Network">xterm -T Network -e nmtui</Program>
+    <Program icon="preferences-system-network" label="Wi-Fi">ruke-wifi</Program>
     <Program icon="utilities-system-monitor" label="Task Manager">xterm -T Tasks -e htop</Program>
     <Program icon="ruke-settings" label="Settings">ruke-settings</Program>
     <Separator/>
@@ -38,7 +38,7 @@
     <TrayButton popup="Video" icon="ruke-video">exec:ruke-video</TrayButton>
     <TrayButton popup="Music" icon="ruke-music">exec:ruke-music</TrayButton>
     <TrayButton popup="Settings" icon="ruke-settings">exec:ruke-settings</TrayButton>
-    <TrayButton popup="Wi-Fi &amp; Network" icon="preferences-system-network">exec:xterm -T Network -e nmtui</TrayButton>
+    <TrayButton popup="Wi-Fi" icon="preferences-system-network">exec:ruke-wifi</TrayButton>
     <TrayButton popup="Task Manager" icon="utilities-system-monitor">exec:xterm -T Tasks -e htop</TrayButton>
     <TrayButton popup="Volume" icon="multimedia-volume-control">exec:xterm -T Volume -e alsamixer</TrayButton>
     <Spacer width="8"/>
@@ -73,13 +73,14 @@
   </MenuStyle>
   <PopupStyle delay="400"><Font>Inter:size=9</Font><Foreground>#c0caf5</Foreground><Background>#24283b</Background><Outline>#2a2f45</Outline></PopupStyle>
 
+  <IconPath>/usr/share/rukeos/icons/48</IconPath>
+  <IconPath>/usr/share/icons/hicolor/48x48/apps</IconPath>
   <IconPath>/usr/share/icons/Papirus-Dark/48x48/apps</IconPath>
   <IconPath>/usr/share/icons/Papirus/48x48/apps</IconPath>
   <IconPath>/usr/share/icons/Papirus-Dark/24x24/actions</IconPath>
   <IconPath>/usr/share/icons/Papirus/24x24/actions</IconPath>
   <IconPath>/usr/share/icons/Papirus/48x48/devices</IconPath>
   <IconPath>/usr/share/icons/Papirus/48x48/places</IconPath>
-  <IconPath>/usr/share/icons/hicolor/48x48/apps</IconPath>
   <IconPath>/usr/share/icons/Papirus-Dark/24x24/panel</IconPath>
   <IconPath>/usr/share/icons/Papirus/24x24/panel</IconPath>
   <Desktops width="2" height="1"/>

@@ -1,5 +1,9 @@
 # rukeOS changelog
 
+## 0.4.1
+- Dock and menu icons for Terminal, Files, Browser, Text Editor, Wi-Fi, Volume, Settings, Video, Music, Updates and Power use the rukeOS purple icon pack.
+- New Wi-Fi menu (click the Wi-Fi icon in the top bar or on the dock): dark Tokyo Night list, signal bars, lock for secured networks, connected network highlighted, and an in-menu password prompt.
+
 ## 0.4
 - Settings app (Updates, Customization, Help): Check for updates runs in the background with a spinner and progress bar — no terminal window.
 - Wi-Fi icon in the top bar (next to the clock) shows connected / signal / disconnected. Click the clock (or the icon) for the quick panel: Wi-Fi, volume, brightness, night light, airplane mode, battery, and Settings / Lock / Log out / Restart / Power off.

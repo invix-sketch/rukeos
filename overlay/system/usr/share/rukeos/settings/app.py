@@ -127,6 +127,29 @@ button.action-btn.power-btn:hover, button.action-btn.power-btn:active {
 button.action-btn label { color: #c0caf5; background: none; }
 button.action-btn.power-btn:hover label, button.action-btn.power-btn:active label { color: #16161e; }
 label.signal { font-family: "JetBrains Mono", monospace; }
+
+.wifi-shell { background-color: #1a1b26; }
+.wifi-card { background-color: #24283b; border-radius: 12px; }
+button.wifi-item {
+  background: transparent; background-image: none; border: none; box-shadow: none;
+  border-radius: 10px; padding: 0; min-height: 0; outline: none;
+}
+button.wifi-item:hover { background: rgba(123,79,214,0.14); background-image: none; }
+button.wifi-item:active { background: rgba(123,79,214,0.22); background-image: none; }
+button.wifi-item.active { background: rgba(123,79,214,0.30); background-image: none; }
+button.wifi-item label { color: #c0caf5; background: none; }
+.wifi-pass { background-color: #24283b; border-radius: 12px; border: 1px solid rgba(123,79,214,0.40); }
+.wifi-header { color: #c0caf5; }
+#taskbar-preview, .taskbar-preview { background-color: #1a1b26; }
+.taskbar-top { background-color: #16161e; }
+.taskbar-dock { background-color: #16161e; border-radius: 16px; }
+button.suggested-action { background: #7B4FD6; background-image: none; color: #ffffff; border: none; border-radius: 8px; min-height: 32px; }
+button.suggested-action:hover { background: #6A35D0; background-image: none; }
+switch { min-width: 42px; }
+switch:checked, switch:checked:hover, switch:checked:backdrop {
+  background: #7B4FD6; background-color: #7B4FD6; background-image: none; border-color: #7B4FD6;
+}
+switch slider { min-width: 18px; min-height: 18px; }
 .swatch { border-radius: 16px; border: 2px solid transparent; min-width: 28px; min-height: 28px; padding: 0; }
 .swatch.selected { border-color: #ffffff; }
 """
@@ -1156,6 +1179,459 @@ class SettingsWindow(Gtk.Window):
             "Log: <tt>/var/log/ruke-update.log</tt>" % GLib.markup_escape_text(ver),
         )
         return box
+
+def _wifi_secured(n):
+    sec = (n.get("security") or "").strip()
+    return bool(sec and sec not in ("--", "", "none", "None"))
+
+
+class SignalBars(Gtk.DrawingArea):
+    """Four Tokyo Night signal bars, purple when this row is the connected network."""
+
+    def __init__(self, level=0, active=False):
+        Gtk.DrawingArea.__init__(self)
+        self.level = max(0, min(4, int(level)))
+        self.active = bool(active)
+        self.set_size_request(20, 18)
+        self.connect("draw", self._draw)
+
+    def _draw(self, _w, cr):
+        w, h = 20, 18
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.paint()
+        if self.active:
+            on = (0.482, 0.310, 0.839, 1)  # #7B4FD6
+        else:
+            on = (0.753, 0.792, 0.961, 1)  # #c0caf5
+        off = (0.337, 0.373, 0.537, 0.40)
+        bar_w, gap = 3.2, 1.8
+        heights = (5, 8.5, 12, 16)
+        total = 4 * bar_w + 3 * gap
+        x0 = (w - total) / 2.0
+        for i, bh in enumerate(heights):
+            cr.set_source_rgba(*(on if self.level >= i + 1 else off))
+            x = x0 + i * (bar_w + gap)
+            y = h - bh - 1
+            r = 1.1
+            cr.new_path()
+            cr.arc(x + bar_w - r, y + r, r, -1.5708, 0)
+            cr.arc(x + bar_w - r, y + bh - r, r, 0, 1.5708)
+            cr.arc(x + r, y + bh - r, r, 1.5708, 3.1416)
+            cr.arc(x + r, y + r, r, 3.1416, 4.7124)
+            cr.close_path()
+            cr.fill()
+        return False
+
+
+class LockMark(Gtk.DrawingArea):
+    def __init__(self, active=False):
+        Gtk.DrawingArea.__init__(self)
+        self.active = bool(active)
+        self.set_size_request(14, 16)
+        self.connect("draw", self._draw)
+
+    def _draw(self, _w, cr):
+        if self.active:
+            cr.set_source_rgba(0.482, 0.310, 0.839, 1)
+        else:
+            cr.set_source_rgba(0.337, 0.373, 0.537, 1)
+        # shackle
+        cr.set_line_width(1.6)
+        cr.arc(7, 6.2, 3.1, 3.1416, 0)
+        cr.stroke()
+        # body
+        cr.rectangle(3.2, 7.2, 7.6, 6.4)
+        cr.fill()
+        return False
+
+
+class WifiList(Gtk.Box):
+    """Shared network list + in-panel password prompt, used by the Wi-Fi menu and the quick panel."""
+
+    def __init__(self, compact=False):
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self._on_connected = None
+        self._ssid_for_password = None
+        self.list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        sc = Gtk.ScrolledWindow()
+        sc.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        sc.set_min_content_height(48)
+        sc.set_max_content_height(280 if not compact else 180)
+        sc.set_propagate_natural_height(True)
+        sc.add(self.list_box)
+        self.pack_start(sc, True, True, 0)
+
+        self.pw_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.pw_box.get_style_context().add_class("wifi-pass")
+        self.pw_box.set_no_show_all(True)
+        self.pw_hint = Gtk.Label(xalign=0)
+        self.pw_hint.set_line_wrap(True)
+        self.pw_entry = Gtk.Entry()
+        self.pw_entry.set_visibility(False)
+        self.pw_entry.set_placeholder_text("Password")
+        self.pw_entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.pw_entry.connect("activate", self._do_connect)
+        pw_btn = Gtk.Button(label="Connect")
+        pw_btn.get_style_context().add_class("suggested-action")
+        pw_btn.connect("clicked", self._do_connect)
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        inner.set_margin_start(12)
+        inner.set_margin_end(12)
+        inner.set_margin_top(10)
+        inner.set_margin_bottom(10)
+        inner.pack_start(self.pw_hint, False, False, 0)
+        inner.pack_start(self.pw_entry, False, False, 0)
+        inner.pack_start(pw_btn, False, False, 0)
+        self.pw_box.pack_start(inner, False, False, 0)
+        self.pack_start(self.pw_box, False, False, 0)
+
+    def set_status_handler(self, fn):
+        self._on_connected = fn
+
+    def refresh(self, rescan=False):
+        def work():
+            nets, err = wifi_list(rescan=rescan)
+            GLib.idle_add(self.set_networks, nets, err)
+        threading.Thread(target=work, daemon=True).start()
+
+    def set_networks(self, nets, err):
+        for ch in list(self.list_box.get_children()):
+            self.list_box.remove(ch)
+        if not wifi_radio() or airplane_on():
+            self.list_box.pack_start(muted("Wi-Fi is turned off."), False, False, 0)
+            self.list_box.show_all()
+            return False
+        if err and not nets:
+            self.list_box.pack_start(muted("Couldn't list networks."), False, False, 0)
+            self.list_box.show_all()
+            return False
+        if not nets:
+            self.list_box.pack_start(muted("No networks found."), False, False, 0)
+            self.list_box.show_all()
+            return False
+        # connected first (wifi_list already sorts that way)
+        for n in nets[:12]:
+            self.list_box.pack_start(self._row(n), False, False, 0)
+        self.list_box.show_all()
+        return False
+
+    def _row(self, n):
+        row = Gtk.Button()
+        row.set_relief(Gtk.ReliefStyle.NONE)
+        row.get_style_context().add_class("wifi-item")
+        if n.get("active"):
+            row.get_style_context().add_class("active")
+        hb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        hb.set_margin_start(8)
+        hb.set_margin_end(8)
+        hb.set_margin_top(7)
+        hb.set_margin_bottom(7)
+        level = 0 if n.get("signal") is None else max(1, min(4, 1 + int(n["signal"]) // 25))
+        hb.pack_start(SignalBars(level, n.get("active")), False, False, 0)
+        name = Gtk.Label(label=n["ssid"], xalign=0)
+        name.set_ellipsize(Pango.EllipsizeMode.END)
+        name.set_hexpand(True)
+        name.set_halign(Gtk.Align.START)
+        if n.get("active"):
+            name.set_markup("<b>%s</b>" % GLib.markup_escape_text(n["ssid"]))
+        hb.pack_start(name, True, True, 0)
+        if _wifi_secured(n):
+            hb.pack_start(LockMark(n.get("active")), False, False, 0)
+        if n.get("active"):
+            tick = Gtk.Label()
+            tick.set_markup('<span foreground="#7B4FD6"><b>✓</b></span>')
+            hb.pack_start(tick, False, False, 0)
+        row.add(hb)
+        row.connect("clicked", self._clicked, n)
+        return row
+
+    def show_password(self, ssid):
+        self._ssid_for_password = ssid
+        self.pw_hint.set_markup("Password for <b>%s</b>" % GLib.markup_escape_text(ssid))
+        self.pw_entry.set_text("")
+        self.pw_box.set_no_show_all(False)
+        self.pw_box.show_all()
+        self.pw_entry.grab_focus()
+        top = self.get_toplevel()
+        if isinstance(top, Gtk.Window):
+            top.queue_resize()
+            top.resize(max(top.get_size()[0], 340), 1)
+
+    def hide_password(self):
+        self.pw_box.hide()
+        self.pw_box.set_no_show_all(True)
+        self._ssid_for_password = None
+
+    def _clicked(self, _w, n):
+        if n.get("active"):
+            return
+        if _wifi_secured(n):
+            self.show_password(n["ssid"])
+        else:
+            self._ssid_for_password = n["ssid"]
+            self._do_connect()
+
+    def _do_connect(self, *_):
+        ssid = self._ssid_for_password
+        if not ssid:
+            return
+        password = self.pw_entry.get_text() if self.pw_box.get_visible() else None
+        if self._on_connected:
+            self._on_connected("Connecting to %s…" % ssid)
+
+        def work():
+            rc, out = wifi_connect(ssid, password or None)
+
+            def done():
+                if rc == 0:
+                    self.hide_password()
+                    if self._on_connected:
+                        self._on_connected(None)
+                    self.refresh(False)
+                else:
+                    low = (out or "").lower()
+                    if "password" in low or "802-11-wireless-security" in low:
+                        msg = "Wrong password, try again."
+                    elif out.strip():
+                        msg = out.strip().splitlines()[-1][:160]
+                    else:
+                        msg = "Couldn't connect."
+                    self.pw_hint.set_text(msg)
+                    if self._on_connected:
+                        self._on_connected(msg)
+                return False
+
+            GLib.idle_add(done)
+
+        threading.Thread(target=work, daemon=True).start()
+
+
+class WifiPanel(Gtk.Window):
+    """Dedicated Wi-Fi menu opened from the top-bar icon or the dock."""
+
+    def __init__(self, screenshot=None, demo=False):
+        Gtk.Window.__init__(self, title="Wi-Fi")
+        try:
+            GLib.set_prgname("RukeWifi")
+        except Exception:
+            pass
+        self.set_decorated(False)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_keep_above(True)
+        self.set_resizable(False)
+        self.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+        self.set_default_size(340, -1)
+        self._focus_timeout = None
+        self._building = True
+        self._demo = demo
+        if not screenshot:
+            self.connect("focus-out-event", self._on_focus_out)
+        self.connect("destroy", Gtk.main_quit)
+        self.connect("key-press-event", lambda _w, ev: ev.keyval == Gdk.KEY_Escape and (self.destroy() or True) or False)
+
+        frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        frame.set_name("quickpanel-frame")
+        self.add(frame)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        root.get_style_context().add_class("wifi-shell")
+        root.set_margin_start(14)
+        root.set_margin_end(14)
+        root.set_margin_top(14)
+        root.set_margin_bottom(14)
+        frame.pack_start(root, True, True, 0)
+
+        head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        head.pack_start(icon_image("network", 28), False, False, 0)
+        title = Gtk.Label(xalign=0)
+        title.set_markup("<b>Wi-Fi</b>")
+        title.set_hexpand(True)
+        head.pack_start(title, True, True, 0)
+        self.wifi_switch = Gtk.Switch()
+        self.wifi_switch.connect("notify::active", self._wifi_toggled)
+        head.pack_end(self.wifi_switch, False, False, 0)
+        root.pack_start(head, False, False, 0)
+
+        self.status = Gtk.Label(xalign=0)
+        self.status.get_style_context().add_class("muted")
+        self.status.set_ellipsize(Pango.EllipsizeMode.END)
+        root.pack_start(self.status, False, False, 0)
+
+        self.wifi_list = WifiList(compact=False)
+        self.wifi_list.set_status_handler(self._status_from_list)
+        root.pack_start(self.wifi_list, True, True, 0)
+
+        adv = Gtk.Button(label="Advanced network settings")
+        adv.get_style_context().add_class("flat")
+        adv.set_halign(Gtk.Align.START)
+        adv.connect("clicked", self._advanced)
+        root.pack_start(adv, False, False, 0)
+
+        self._refresh_header()
+        self._building = False
+        if screenshot or demo:
+            nets, err = wifi_list(rescan=False)
+            self.wifi_list.set_networks(nets, err)
+        else:
+            self.wifi_list.refresh(False)
+        if demo:
+            self.wifi_list.show_password("Cafe")
+        self._place_top_right()
+        maybe_screenshot(self, screenshot)
+        if not screenshot:
+            GLib.timeout_add(80, self._grab_focus)
+
+    def _demo_password(self):
+        self.wifi_list.show_password("Cafe")
+        return False
+
+    def _refresh_header(self):
+        st, sig, label = wifi_state_summary()
+        try:
+            self.wifi_switch.handler_block_by_func(self._wifi_toggled)
+        except TypeError:
+            pass
+        self.wifi_switch.set_active(wifi_radio() and st != "airplane")
+        try:
+            self.wifi_switch.handler_unblock_by_func(self._wifi_toggled)
+        except TypeError:
+            pass
+        extra = (("  ·  %s%%" % sig) if sig is not None and st == "connected" else "")
+        self.status.set_text(label + extra)
+
+    def _status_from_list(self, msg):
+        if msg:
+            self.status.set_text(msg)
+        else:
+            self._refresh_header()
+
+    def _wifi_toggled(self, switch, *_):
+        if self._building:
+            return
+        on = switch.get_active()
+
+        def work():
+            set_wifi_radio(on)
+            GLib.idle_add(self._refresh_header)
+            if on:
+                self.wifi_list.refresh(True)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _advanced(self, *_):
+        self.destroy()
+        subprocess.Popen(
+            ["xterm", "-T", "Network", "-e", "nmtui"],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+        )
+
+    def _place_top_right(self):
+        self.show_all()
+        if not getattr(self, "_demo", False):
+            self.wifi_list.hide_password()
+        screen = self.get_screen()
+        try:
+            mon = screen.get_monitor_geometry(
+                screen.get_primary_monitor() if hasattr(screen, "get_primary_monitor") else 0
+            )
+            sw, mx, my = mon.width, mon.x, mon.y
+        except Exception:
+            sw, mx, my = screen.get_width(), 0, 0
+        w, _h = self.get_size()
+        self.move(mx + sw - w - 10, my + 36)
+        self.present()
+
+    def _grab_focus(self):
+        try:
+            self.present()
+            if self.get_window():
+                self.get_window().focus(Gdk.CURRENT_TIME)
+        except Exception:
+            pass
+        return False
+
+    def _on_focus_out(self, *_):
+        if self._focus_timeout:
+            GLib.source_remove(self._focus_timeout)
+
+        def _close():
+            self._focus_timeout = None
+            if not self.get_visible() or self.has_toplevel_focus():
+                return False
+            self.destroy()
+            return False
+
+        self._focus_timeout = GLib.timeout_add(180, _close)
+        return False
+
+
+class TaskbarPreview(Gtk.Window):
+    """Headless preview of the dock + a sliver of the top bar with the new icon pack."""
+
+    def __init__(self, screenshot=None):
+        Gtk.Window.__init__(self, title="rukeOS")
+        self.set_default_size(900, 220)
+        self.set_decorated(False)
+        self.set_name("taskbar-preview")
+        self.connect("destroy", Gtk.main_quit)
+        bg = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        bg.get_style_context().add_class("taskbar-preview")
+        self.add(bg)
+
+        top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        top.get_style_context().add_class("taskbar-top")
+        top.set_size_request(-1, 36)
+        logo = Gtk.Label(label="rukeOS")
+        logo.set_markup("<b>rukeOS</b>")
+        top.pack_start(logo, False, False, 12)
+        top.pack_start(Gtk.Label(), True, True, 0)
+        clock = Gtk.Label(label="Tue 24 Nov   15:00")
+        top.pack_end(clock, False, False, 12)
+        top.pack_end(icon_image("network", 20), False, False, 8)
+        bg.pack_start(top, False, False, 0)
+
+        bg.pack_start(Gtk.Label(), True, True, 0)
+
+        dock = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        dock.set_halign(Gtk.Align.CENTER)
+        dock.set_valign(Gtk.Align.END)
+        dock.set_margin_bottom(18)
+        frame = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        frame.get_style_context().add_class("taskbar-dock")
+        inner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        inner.set_margin_start(16)
+        inner.set_margin_end(16)
+        inner.set_margin_top(12)
+        inner.set_margin_bottom(12)
+        items = [
+            ("terminal", "Terminal"),
+            ("files", "Files"),
+            ("browser", "Browser"),
+            ("text-editor", "Editor"),
+            ("video", "Video"),
+            ("music", "Music"),
+            ("settings", "Settings"),
+            ("network", "Wi-Fi"),
+            ("volume", "Volume"),
+        ]
+        for name, label in items:
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            col.set_halign(Gtk.Align.CENTER)
+            col.pack_start(icon_image(name, 48), False, False, 0)
+            l = Gtk.Label(label=label)
+            l.get_style_context().add_class("muted")
+            col.pack_start(l, False, False, 0)
+            inner.pack_start(col, False, False, 0)
+        frame.pack_start(inner, False, False, 0)
+        dock.pack_start(frame, False, False, 0)
+        bg.pack_end(dock, False, False, 0)
+        maybe_screenshot(self, screenshot)
+        if not screenshot:
+            self.show_all()
+            self.present()
+
+
 class QuickPanel(Gtk.Window):
     def __init__(self, screenshot=None):
         Gtk.Window.__init__(self, title="Quick settings")
@@ -1201,29 +1677,9 @@ class QuickPanel(Gtk.Window):
         self.wifi_sub.set_margin_start(40)
         root.pack_start(self.wifi_sub, False, False, 0)
         self.wifi_switch.connect("notify::active", self._wifi_toggled)
-        self.net_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        sc = Gtk.ScrolledWindow()
-        sc.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        sc.set_min_content_height(40)
-        sc.set_max_content_height(160)
-        sc.set_propagate_natural_height(True)
-        sc.add(self.net_box)
-        root.pack_start(sc, False, False, 0)
-        self.pw_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        self.pw_box.set_no_show_all(True)
-        self.pw_hint = Gtk.Label(xalign=0)
-        self.pw_hint.get_style_context().add_class("muted")
-        self.pw_entry = Gtk.Entry()
-        self.pw_entry.set_visibility(False)
-        self.pw_entry.set_placeholder_text("Password")
-        self.pw_entry.connect("activate", self._do_connect)
-        pw_btn = Gtk.Button(label="Connect")
-        pw_btn.get_style_context().add_class("suggested-action")
-        pw_btn.connect("clicked", self._do_connect)
-        self.pw_box.pack_start(self.pw_hint, False, False, 0)
-        self.pw_box.pack_start(self.pw_entry, False, False, 0)
-        self.pw_box.pack_start(pw_btn, False, False, 0)
-        root.pack_start(self.pw_box, False, False, 0)
+        self.wifi_list = WifiList(compact=True)
+        self.wifi_list.set_status_handler(lambda msg: self.wifi_sub.set_text(msg) if msg else self._refresh_all())
+        root.pack_start(self.wifi_list, False, False, 0)
 
         self.bt_row, self.bt_switch = None, None
         if has_bluetooth():
@@ -1339,7 +1795,11 @@ class QuickPanel(Gtk.Window):
         self._refresh_all()
         self._building = False
         self._place_top_right()
-        threading.Thread(target=self._load_networks, args=(False,), daemon=True).start()
+        if screenshot:
+            nets, err = wifi_list(rescan=False)
+            self.wifi_list.set_networks(nets, err)
+        else:
+            self.wifi_list.refresh(False)
         maybe_screenshot(self, screenshot)
         if not screenshot:
             GLib.timeout_add(80, self._grab_focus)
@@ -1450,98 +1910,6 @@ class QuickPanel(Gtk.Window):
         else:
             self.bat_lbl.hide()
 
-    def _load_networks(self, rescan):
-        nets, err = wifi_list(rescan=rescan)
-        GLib.idle_add(self._fill_networks, nets, err)
-
-    def _fill_networks(self, nets, err):
-        for ch in list(self.net_box.get_children()):
-            self.net_box.remove(ch)
-        if err and not nets:
-            self.net_box.pack_start(muted("Couldn't list networks."), False, False, 0)
-            self.net_box.show_all()
-            return False
-        if not wifi_radio() or airplane_on():
-            self.net_box.show_all()
-            return False
-        if not nets:
-            self.net_box.pack_start(muted("No networks found."), False, False, 0)
-        for n in nets[:12]:
-            row = Gtk.EventBox()
-            row.get_style_context().add_class("wifi-row")
-            if n["active"]:
-                row.get_style_context().add_class("active")
-            hb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            level = max(1, min(4, 1 + n["signal"] // 25))
-            bars = "▂▄▆█"[:level] + " " * (4 - level)
-            sig = Gtk.Label(label=bars)
-            sig.get_style_context().add_class("signal")
-            sig.set_width_chars(4)
-            sig.set_xalign(0)
-            sig.set_halign(Gtk.Align.START)
-            sig_box = Gtk.Box()
-            sig_box.set_size_request(36, -1)
-            sig_box.pack_start(sig, False, False, 0)
-            hb.pack_start(sig_box, False, False, 0)
-            name = Gtk.Label(label=n["ssid"], xalign=0)
-            name.set_ellipsize(Pango.EllipsizeMode.END)
-            name.set_hexpand(True)
-            hb.pack_start(name, True, True, 0)
-            if n["security"] and n["security"] not in ("--", "", "none", "None"):
-                hb.pack_start(Gtk.Label(label="🔒"), False, False, 0)
-            if n["active"]:
-                hb.pack_start(Gtk.Label(label="✓"), False, False, 0)
-            row.add(hb)
-            row.connect("button-press-event", self._net_clicked, n)
-            self.net_box.pack_start(row, False, False, 0)
-        self.net_box.show_all()
-        return False
-
-    def _net_clicked(self, _w, _ev, n):
-        if n.get("active"):
-            return False
-        sec = (n.get("security") or "").strip()
-        needs_pw = sec and sec not in ("--", "", "none", "None")
-        if needs_pw:
-            self._ssid_for_password = n["ssid"]
-            self.pw_hint.set_text("Password for “%s”" % n["ssid"])
-            self.pw_entry.set_text("")
-            self.pw_box.show_all()
-            self.pw_entry.grab_focus()
-        else:
-            self._ssid_for_password = n["ssid"]
-            self._do_connect()
-        return False
-
-    def _do_connect(self, *_):
-        ssid = self._ssid_for_password
-        if not ssid:
-            return
-        password = self.pw_entry.get_text() if self.pw_box.get_visible() else None
-        self.wifi_sub.set_text("Connecting to %s…" % ssid)
-
-        def work():
-            rc, out = wifi_connect(ssid, password or None)
-
-            def done():
-                if rc == 0:
-                    self.pw_box.hide()
-                    self._refresh_all()
-                    threading.Thread(target=self._load_networks, args=(False,), daemon=True).start()
-                else:
-                    msg = "Couldn't connect."
-                    low = (out or "").lower()
-                    if "password" in low or "802-11-wireless-security" in low:
-                        msg = "Wrong password, try again."
-                    elif out.strip():
-                        msg = out.strip().splitlines()[-1][:160]
-                    self.wifi_sub.set_text(msg)
-                return False
-
-            GLib.idle_add(done)
-
-        threading.Thread(target=work, daemon=True).start()
-
     def _wifi_toggled(self, switch, *_):
         if self._building:
             return
@@ -1551,7 +1919,7 @@ class QuickPanel(Gtk.Window):
             set_wifi_radio(on)
             GLib.idle_add(self._refresh_all)
             if on:
-                threading.Thread(target=self._load_networks, args=(True,), daemon=True).start()
+                self.wifi_list.refresh(True)
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -1596,7 +1964,7 @@ class QuickPanel(Gtk.Window):
             set_airplane(on)
             GLib.idle_add(self._refresh_all)
             if not on:
-                threading.Thread(target=self._load_networks, args=(True,), daemon=True).start()
+                self.wifi_list.refresh(True)
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -1704,10 +2072,10 @@ class StatusTray(Gtk.Window):
         return True
 
     def _clicked(self, *_):
-        exe = shutil.which("ruke-quickpanel") or sys.argv[0]
+        exe = shutil.which("ruke-wifi") or sys.argv[0]
         if exe == sys.argv[0]:
             subprocess.Popen(
-                [sys.executable, sys.argv[0], "--quickpanel"],
+                [sys.executable, sys.argv[0], "--wifi"],
                 start_new_session=True,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
@@ -1898,12 +2266,15 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="ruke-settings", description="rukeOS Settings")
     p.add_argument("--page", choices=("updates", "customization", "help"), default="updates")
     p.add_argument("--quickpanel", action="store_true", help="open the clock quick panel")
+    p.add_argument("--wifi", action="store_true", help="open the Wi-Fi menu")
+    p.add_argument("--preview-taskbar", action="store_true", help="render a dock/taskbar preview and exit")
     p.add_argument("--tray", action="store_true", help="Wi-Fi indicator for the top bar")
     p.add_argument("--apply-appearance", action="store_true", help="rewrite theme files from saved settings")
     p.add_argument("--apply-session", action="store_true", help="restore wallpaper and night light")
     p.add_argument("--play", choices=("video", "music"), help="open a Video or Music file picker, then play in mpv")
     p.add_argument("--screenshot", metavar="PATH", help="write a PNG of the window and exit")
     p.add_argument("--demo-updates", choices=("checking", "updating", "uptodate", "done", "error"))
+    p.add_argument("--demo-wifi", action="store_true", help="show the Wi-Fi password prompt in screenshots")
     p.add_argument("files", nargs="*", help="media files (used with --play, or MIME open)")
     args = p.parse_args(argv)
 
@@ -1921,6 +2292,35 @@ def main(argv=None):
     if args.tray:
         StatusTray()
         Gtk.main()
+        return 0
+
+    if args.preview_taskbar:
+        TaskbarPreview(screenshot=args.screenshot)
+        Gtk.main()
+        return 0
+
+    if args.wifi:
+        if not args.screenshot and toggle_instance("ruke-wifi"):
+            return 0
+        pid_path = write_pid("ruke-wifi")
+
+        def _cleanup_wifi(*_):
+            try:
+                os.remove(pid_path)
+            except OSError:
+                pass
+            Gtk.main_quit()
+
+        signal.signal(signal.SIGTERM, _cleanup_wifi)
+        signal.signal(signal.SIGINT, _cleanup_wifi)
+        WifiPanel(screenshot=args.screenshot, demo=args.demo_wifi)
+        try:
+            Gtk.main()
+        finally:
+            try:
+                os.remove(pid_path)
+            except OSError:
+                pass
         return 0
 
     if args.quickpanel:

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <defs>
+      <clipPath id="tile">
+        <rect x="0" y="0" width="512" height="512" rx="102" ry="102"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#tile)">
+      <rect width="512" height="512" fill="#000000"/>
+      <polygon points="512,0 512,512 0,512" fill="#555555"/>
+    </g>
+    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="#7B4FD6" stroke="#6A35D0" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round">
+      
+      <rect x="3.4" y="3.4" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="9.8" y="3.4" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="16.2" y="3.4" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="3.4" y="9.8" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="9.8" y="9.8" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="16.2" y="9.8" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="3.4" y="16.2" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="9.8" y="16.2" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+      <rect x="16.2" y="16.2" width="4.4" height="4.4" rx="1.05" fill="#7B4FD6" stroke="none"/>
+    
+    </g>
+</svg>

@@ -21,7 +21,7 @@ When it says *Update finished*, pick **menu > Restart desktop**. The dock's glob
 - **menu > Settings** (or **Check for updates**): the Updates page checks and applies updates in the background, with a spinner and progress bar. No terminal window is opened.
 - You can still run `ruke-update` in a terminal if you want to watch the log.
 - rukeOS also checks once a day after you log in and asks before installing anything.
-- Click the **clock** (or the Wi-Fi icon next to it) for the quick panel: Wi-Fi, volume, brightness, night light, and power.
+- Click the **Wi-Fi icon** (top bar or dock) for the Wi-Fi menu. Click the **clock** for the quick panel: Wi-Fi, volume, brightness, night light, and power.
 - **Video** and **Music** on the dock play files in mpv. Double-click a video or song in Files to play it.
 
 | command | what it does |
