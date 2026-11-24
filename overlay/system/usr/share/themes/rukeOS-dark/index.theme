@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=X-GNOME-Metatheme
+Name=rukeOS-dark
+Comment=Tokyo Night dark theme for rukeOS
+Encoding=UTF-8
+
+[X-GNOME-Metatheme]
+GtkTheme=rukeOS-dark
+MetacityTheme=Adwaita-dark
+IconTheme=rukeOS
+CursorTheme=Adwaita
+ButtonLayout=close,minimize,maximize:

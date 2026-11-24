@@ -14,6 +14,15 @@
 @define-color sidebar_fg_color #a9b1d6;
 @define-color borders rgba(122,162,247,0.12);
 
+@define-color theme_bg_color #1a1b26;
+@define-color theme_fg_color #c0caf5;
+@define-color theme_base_color #1f2335;
+@define-color theme_text_color #c0caf5;
+@define-color theme_selected_bg_color #7B4FD6;
+@define-color theme_selected_fg_color #ffffff;
+@define-color content_view_bg #1a1b26;
+
+
 /* ---- rukeOS look for GTK3 apps (PCManFM, Mousepad, NetSurf) ---- */
 window.background { background-color: #1a1b26; color: #c0caf5; }
 menubar, toolbar, .toolbar { background-color: #16161e; border-bottom: 1px solid rgba(122,162,247,0.10); padding: 4px 6px; }
@@ -41,3 +50,42 @@ menu, .menu, .context-menu, popover.menu { background-color: #24283b; border: 1p
 menuitem { border-radius: 6px; padding: 6px 10px; }
 menuitem:hover { background-color: #7aa2f7; color: #16161e; }
 button.suggested-action { background-color: #7aa2f7; color: #16161e; border-radius: 8px; }
+
+/* Desktop icons (pcmanfm --desktop): keep the wallpaper, no white/solid boxes, readable labels */
+window.desktop, window#fm-desktop, #fm-desktop, .fm-desktop, FmDesktop {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+window.background.desktop {
+  background-color: transparent;
+  background-image: none;
+}
+window.desktop iconview, window.desktop .view,
+#fm-desktop iconview, #fm-desktop .view,
+.fm-desktop iconview, .fm-desktop .view, FmDesktop .view {
+  background-color: transparent;
+  color: #c0caf5;
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+window.desktop iconview:selected, window.desktop .view:selected,
+#fm-desktop .view:selected, .fm-desktop .view:selected {
+  background-color: alpha(#7B4FD6, 0.35);
+  color: #ffffff;
+  border-radius: 10px;
+}
+window.desktop label, #fm-desktop label, .fm-desktop label, FmDesktop label {
+  color: #c0caf5;
+  background-color: transparent;
+  text-shadow: 0 1px 2px #1a1b26, 0 0 6px #1a1b26;
+}
+
+/* Force PCManFM (GTK3) chrome and views to stay dark even if a theme fails to load */
+window, window.background, dialog { background-color: #1a1b26; color: #c0caf5; }
+FmMainWin, FmTabPage, FmStandardView, scrolledwindow, viewport {
+  background-color: #1a1b26; color: #c0caf5;
+}
+FmPlacesView, FmDirTreeView { background-color: #16161e; color: #a9b1d6; }

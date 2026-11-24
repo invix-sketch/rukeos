@@ -1,0 +1,49 @@
+#!/bin/sh
+# Helpers for the desktop right-click menu: new items, terminal, shortcuts.
+set -e
+if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs" ]; then
+  # shellcheck disable=SC1090
+  . "${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs"
+fi
+DESK="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
+mkdir -p "$DESK"
+
+unique() {
+  # $1 = directory, $2 = base name, $3 = optional extension (e.g. .txt)
+  dir=$1 base=$2 ext=${3-}
+  if [ ! -e "$dir/$base$ext" ]; then
+    printf '%s/%s%s\n' "$dir" "$base" "$ext"
+    return
+  fi
+  n=2
+  while [ -e "$dir/$base $n$ext" ]; do
+    n=$((n + 1))
+  done
+  printf '%s/%s %s%s\n' "$dir" "$base" "$n" "$ext"
+}
+
+cmd=${1:-}
+case "$cmd" in
+  new-folder)
+    path=$(unique "$DESK" "New folder")
+    mkdir -p "$path"
+    ;;
+  new-text)
+    path=$(unique "$DESK" "New text file" ".txt")
+    : > "$path"
+    if command -v mousepad >/dev/null; then
+      mousepad "$path" &
+    fi
+    ;;
+  terminal)
+    cd "$DESK"
+    exec xterm -T "Terminal" -e bash
+    ;;
+  add-shortcut)
+    exec /usr/bin/python3 /usr/share/rukeos/settings/app.py --add-shortcut
+    ;;
+  *)
+    echo "usage: ruke-desktop new-folder|new-text|terminal|add-shortcut" >&2
+    exit 2
+    ;;
+esac

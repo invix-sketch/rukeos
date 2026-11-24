@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+Comment=Browse folders
+Exec=pcmanfm
+Icon=ruke-files
+Terminal=false
+Categories=System;FileManager;
+StartupNotify=true

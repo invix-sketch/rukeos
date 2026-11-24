@@ -1,0 +1,98 @@
+#!/usr/bin/python3
+"""status / set / change the desktop user's password. Run as root (sudo -n)."""
+from __future__ import annotations
+
+import crypt
+import os
+import spwd
+import subprocess
+import sys
+
+
+def target_user():
+    return os.environ.get("SUDO_USER") or os.environ.get("RUKE_USER") or ""
+
+
+def shadow_hash(name):
+    try:
+        return spwd.getspnam(name).sp_pwdp
+    except PermissionError:
+        return None
+    except KeyError:
+        return ""
+
+
+def is_empty(h):
+    return (not h) or h in ("!", "*", "!!", "!*", "")
+
+
+def status(name):
+    h = shadow_hash(name)
+    if h is None:
+        p = subprocess.run(["passwd", "-S", name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        out = (p.stdout or "").split()
+        if len(out) >= 2 and out[1] in ("NP", "NK", "Empty"):
+            print("none")
+            return 0
+        if len(out) >= 2 and out[1] in ("P", "PS"):
+            print("set")
+            return 0
+        print("unknown")
+        return 1
+    print("none" if is_empty(h) else "set")
+    return 0
+
+
+def set_password(name, new):
+    if not new:
+        print("empty password is not allowed", file=sys.stderr)
+        return 1
+    p = subprocess.run(["chpasswd"], input="%s:%s\n" % (name, new), text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if p.returncode != 0:
+        sys.stderr.write(p.stdout or "chpasswd failed\n")
+        return p.returncode
+    return 0
+
+
+def main(argv):
+    if os.geteuid() != 0:
+        print("ruke-passwd must run as root (sudo -n ruke-passwd …)", file=sys.stderr)
+        return 1
+    if len(argv) < 2 or argv[1] in ("-h", "--help"):
+        print("usage: ruke-passwd status|set|change", file=sys.stderr)
+        return 2
+    name = target_user()
+    if not name or name == "root":
+        print("no desktop user", file=sys.stderr)
+        return 1
+    cmd = argv[1]
+    if cmd == "status":
+        return status(name)
+    data = sys.stdin.read().splitlines()
+    if cmd == "set":
+        h = shadow_hash(name)
+        if h is not None and not is_empty(h):
+            print("a password is already set; use change", file=sys.stderr)
+            return 2
+        new = data[0] if data else ""
+        return set_password(name, new)
+    if cmd == "change":
+        if len(data) < 2:
+            print("expected current password and new password", file=sys.stderr)
+            return 2
+        old, new = data[0], data[1]
+        h = shadow_hash(name)
+        if h is None:
+            print("cannot read shadow", file=sys.stderr)
+            return 1
+        if not is_empty(h):
+            if crypt.crypt(old, h) != h:
+                print("current password is wrong", file=sys.stderr)
+                return 3
+        return set_password(name, new)
+    print("unknown command", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

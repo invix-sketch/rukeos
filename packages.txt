@@ -1,5 +1,5 @@
 # Packages ruke-update makes sure are installed (one per line, # = comment).
-# File manager (dock: Files) - light GTK3 app that follows the dark theme
+# File manager (dock: Files) - GTK3 file manager, themed Tokyo Night dark
 pcmanfm
 # Web browser (WebKitGTK) + what it needs to look right
 epiphany
@@ -8,6 +8,9 @@ gst-plugins-good
 # Settings app (GTK3 via PyGObject) + lock screen for the quick panel
 py3-gobject3
 py3-cairo
+i3lock-color
+xautolock
+physlock
 slock
 # Video / Music player (ffmpeg codecs come in as mpv dependencies)
 mpv
@@ -18,6 +21,9 @@ linux-firmware-mediatek
 linux-firmware-ath11k
 linux-firmware-qca
 linux-firmware-rtl_bt
+# Dark GTK theme (PCManFM and other GTK3 apps) + XSETTINGS so the theme actually applies
+adw-gtk3
+xsettingsd
 # handy tools
 curl
 lsblk

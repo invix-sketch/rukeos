@@ -1,4 +1,4 @@
-^sep(rukeOS 0.4.1)
+^sep(rukeOS 0.4.2)
 Terminal,xterm,/usr/share/icons/hicolor/24x24/apps/ruke-terminal.png
 Files,pcmanfm,/usr/share/icons/hicolor/24x24/apps/ruke-files.png
 Text Editor,mousepad,/usr/share/icons/hicolor/24x24/apps/ruke-text-editor.png
@@ -14,6 +14,7 @@ Saving between boots,xterm -T "Saving between boots" -geometry 90x16 -hold -e ru
 Toggle visual effects,sh -c 'pkill -x picom || picom -b --config /home/judah/.config/picom/picom.conf',/usr/share/icons/Papirus-Dark/24x24/apps/preferences-desktop-effects.svg
 Check for updates,ruke-settings --page updates,/usr/share/icons/hicolor/24x24/apps/ruke-updater.png
 About rukeOS,xterm -T About -geometry 74x19 -hold -e fastfetch,/usr/share/icons/Papirus-Dark/24x24/actions/help-about.svg
+Lock,ruke-lock,/usr/share/icons/hicolor/24x24/apps/ruke-lock.png
 ^sep()
 Restart desktop,jwm -restart,/usr/share/icons/Papirus-Dark/24x24/actions/view-refresh.svg
 Reboot,sudo reboot,/usr/share/icons/hicolor/24x24/apps/ruke-power.png

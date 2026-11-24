@@ -396,26 +396,179 @@ def set_night_light(on):
         run_cmd(["xrandr", "--output", o, "--gamma", gamma], timeout=5)
 
 
-def set_wallpaper(path):
+
+def _set_ini_section(path, section, mapping):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+    else:
+        text = ""
+    header = "[%s]" % section
+    parts = re.split(r"(?=^\[[^\]]+\])", text, flags=re.M)
+    found = False
+    out = []
+    for part in parts:
+        if part.lstrip().startswith(header):
+            found = True
+            body = part
+            for key, value in mapping.items():
+                pat = re.compile(r"^" + re.escape(key) + r"=.*$", re.M)
+                if pat.search(body):
+                    body = pat.sub("%s=%s" % (key, value), body)
+                else:
+                    if body and not body.endswith("\n"):
+                        body += "\n"
+                    body += "%s=%s\n" % (key, value)
+            out.append(body if body.endswith("\n") or body == "" else body + "\n")
+        else:
+            if part:
+                out.append(part if part.endswith("\n") else part + "\n")
+    if not found:
+        chunk = header + "\n"
+        for key, value in mapping.items():
+            chunk += "%s=%s\n" % (key, value)
+        if out and not "".join(out).endswith("\n"):
+            out.append("\n")
+        out.append(chunk if chunk.endswith("\n") else chunk + "\n")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("".join(out))
+
+
+def security_path():
+    return os.path.join(_home(), ".config/rukeos/security.conf")
+
+
+def load_security():
+    d = {"lock_minutes": "10", "lock_on_sleep": "1"}
+    path = security_path()
+    if os.path.isfile(path):
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                d[k.strip()] = v.strip()
+    return d
+
+
+def save_security(d):
+    path = security_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for k in ("lock_minutes", "lock_on_sleep"):
+            f.write("%s=%s\n" % (k, d.get(k, "")))
+
+
+def password_status():
+    rc, out = run_cmd(["sudo", "-n", "ruke-passwd", "status"], timeout=6)
+    lines = [l.strip() for l in (out or "").splitlines() if l.strip()]
+    if rc == 0 and lines and lines[-1] in ("set", "none"):
+        return lines[-1]
+    user = os.environ.get("USER") or os.environ.get("LOGNAME") or ""
+    if user:
+        rc, out = run_cmd(["passwd", "-S", user], timeout=5)
+        bits = (out or "").split()
+        if len(bits) >= 2 and bits[1] in ("NP", "NK", "Empty"):
+            return "none"
+        if len(bits) >= 2 and bits[1] in ("P", "PS"):
+            return "set"
+    return "unknown"
+
+
+def set_pcmanfm_desktop(wallpaper=None, theme=None, font_size=None):
+    dark = (theme or "dark") != "light"
+    fs = str(font_size or "10")
+    mapping = {
+        "wallpaper_mode": "crop",
+        "show_wm_menu": "1",
+        "desktop_bg": "#e6e7ed" if not dark else "#1a1b26",
+        "desktop_fg": "#1a1b26" if not dark else "#c0caf5",
+        "desktop_shadow": "#d0d1d8" if not dark else "#16161e",
+        "desktop_font": "Inter %s" % fs,
+        "show_documents": "0",
+        "show_trash": "0",
+        "show_mounts": "0",
+    }
+    if wallpaper:
+        mapping["wallpaper"] = wallpaper
+    conf = os.path.join(_home(), ".config/pcmanfm/default/pcmanfm.conf")
+    _set_ini_section(conf, "desktop", mapping)
+    if wallpaper and os.path.isfile(wallpaper) and os.environ.get("DISPLAY") and shutil.which("pcmanfm"):
+        run_cmd(["pcmanfm", "--set-wallpaper", wallpaper, "--wallpaper-mode=crop"], timeout=8)
+
+
+def write_gtk2_rc(theme, icons, font_size):
+    path = os.path.join(_home(), ".gtkrc-2.0")
+    text = (
+        'gtk-theme-name = "%s"\n'
+        'gtk-icon-theme-name = "%s"\n'
+        'gtk-font-name = "Inter %s"\n'
+        'include "/usr/share/themes/%s/gtk-2.0/gtkrc"\n'
+        % (theme, icons, font_size, theme)
+    )
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except OSError:
+        pass
+
+
+def write_xsettingsd(theme, icons, font_size, dark):
+    path = os.path.join(_home(), ".config/xsettingsd/xsettingsd.conf")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    text = (
+        'Net/ThemeName "%s"\n'
+        'Net/IconThemeName "%s"\n'
+        'Gtk/CursorThemeName "Adwaita"\n'
+        'Gtk/FontName "Inter %s"\n'
+        "Gtk/ApplicationPreferDarkTheme %s\n"
+        "Xft/Antialias 1\n"
+        "Xft/Hinting 1\n"
+        'Xft/HintStyle "hintslight"\n'
+        'Xft/RGBA "rgb"\n'
+        % (theme, icons, font_size, 1 if dark else 0)
+    )
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    except OSError:
+        return
+    if not os.environ.get("DISPLAY") or not shutil.which("xsettingsd"):
+        return
+    rc, _ = run_cmd(["pkill", "-u", str(os.getuid()), "-HUP", "-x", "xsettingsd"], timeout=3)
+    if rc != 0:
+        subprocess.Popen(
+            ["xsettingsd", "-c", path],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def set_wallpaper(path, theme=None, font_size=None):
     if path and os.path.isfile(path) and shutil.which("feh"):
         run_cmd(["feh", "--no-fehbg", "--bg-fill", path], timeout=8)
+    set_pcmanfm_desktop(path if path and os.path.isfile(path) else None, theme=theme, font_size=font_size)
 
 
 def apply_appearance(d, session_only=False):
     wallpaper = d.get("wallpaper") or WALLPAPER_DEFAULT
     if not os.path.isfile(wallpaper):
         wallpaper = WALLPAPER_DEFAULT
-    set_wallpaper(wallpaper)
+    theme = d.get("theme") or "dark"
+    font_size = str(d.get("font_size") or "10")
+    set_wallpaper(wallpaper, theme=theme, font_size=font_size)
     set_night_light(d.get("night_light") == "1")
     if session_only:
         return
     home = _home()
     accent = d.get("accent") or BLUE
-    theme = d.get("theme") or "dark"
-    font_size = str(d.get("font_size") or "10")
     dark = theme != "light"
-    gtk_theme = "adw-gtk3-dark" if dark else "adw-gtk3"
-    icons = "Papirus-Dark" if dark else "Papirus"
+    gtk_theme = "rukeOS-dark" if dark else "adw-gtk3"
+    icons = "rukeOS"
     ini = {
         "gtk-theme-name": gtk_theme,
         "gtk-application-prefer-dark-theme": "1" if dark else "0",
@@ -442,6 +595,10 @@ def apply_appearance(d, session_only=False):
         run_cmd(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", gtk_theme], timeout=4)
         run_cmd(["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", icons], timeout=4)
         run_cmd(["gsettings", "set", "org.gnome.desktop.interface", "font-name", "Inter %s" % font_size], timeout=4)
+    write_gtk2_rc(gtk_theme, icons, font_size)
+    write_xsettingsd(gtk_theme, icons, font_size, dark)
+
+
 def nmcli(args, timeout=20):
     return run_cmd([tool("RUKE_NMCLI", "nmcli")] + list(args), timeout=timeout)
 
@@ -759,7 +916,7 @@ def maybe_screenshot(win, path):
 def load_css_and_display():
     apply_css()
 class SettingsWindow(Gtk.Window):
-    def __init__(self, page="updates", demo=None, screenshot=None):
+    def __init__(self, page="updates", demo=None, screenshot=None, prompt_password=False):
         Gtk.Window.__init__(self, title="Settings")
         self.set_wmclass("RukeSettings", "RukeSettings")
         try:
@@ -773,6 +930,7 @@ class SettingsWindow(Gtk.Window):
         if pb:
             self.set_icon(pb)
         self.demo = demo
+        self.prompt_password = prompt_password
         self._busy = False
         self._pulse_id = None
         self.appearance = load_appearance()
@@ -796,7 +954,7 @@ class SettingsWindow(Gtk.Window):
         self.stack.set_vexpand(True)
         self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.nav = {}
-        for key, label in (("updates", "Updates"), ("customization", "Customization"), ("help", "Help")):
+        for key, label in (("updates", "Updates"), ("customization", "Customization"), ("security", "Security"), ("help", "Help")):
             b = Gtk.Button(label=label)
             b.set_relief(Gtk.ReliefStyle.NONE)
             child = b.get_child()
@@ -819,6 +977,7 @@ class SettingsWindow(Gtk.Window):
 
         self.stack.add_titled(self._build_updates(), "updates", "Updates")
         self.stack.add_titled(self._build_customization(), "customization", "Customization")
+        self.stack.add_titled(self._build_security(), "security", "Security")
         self.stack.add_titled(self._build_help(), "help", "Help")
         self._page = page if page in self.nav else "updates"
         self._goto(None, self._page)
@@ -830,6 +989,8 @@ class SettingsWindow(Gtk.Window):
             self.show_all()
             self.reselect_page()
             self.present()
+            if prompt_password:
+                GLib.idle_add(self._prompt_set_password)
 
     def reselect_page(self):
         self._goto(None, getattr(self, "_page", "updates"))
@@ -1135,6 +1296,187 @@ class SettingsWindow(Gtk.Window):
         self.appearance["font_size"] = str(int(self.font_spin.get_value()))
         self._commit_appearance()
 
+    def _build_security(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        box.pack_start(heading("Security"), False, False, 0)
+        box.pack_start(muted("Lock the screen with your password. Super+L, the Lock button, or the menu."), False, False, 0)
+
+        self.sec_banner, banner_inner = card()
+        self.sec_banner_lbl = Gtk.Label(xalign=0)
+        self.sec_banner_lbl.set_line_wrap(True)
+        banner_inner.pack_start(self.sec_banner_lbl, False, False, 0)
+        box.pack_start(self.sec_banner, False, False, 0)
+
+        fr, inner = card()
+        inner.pack_start(heading("Password"), False, False, 0)
+        self.pw_status = Gtk.Label(xalign=0)
+        inner.pack_start(self.pw_status, False, False, 0)
+        self.pw_current = Gtk.Entry()
+        self.pw_current.set_visibility(False)
+        self.pw_current.set_placeholder_text("Current password")
+        self.pw_current.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.pw_new = Gtk.Entry()
+        self.pw_new.set_visibility(False)
+        self.pw_new.set_placeholder_text("New password")
+        self.pw_new.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.pw_confirm = Gtk.Entry()
+        self.pw_confirm.set_visibility(False)
+        self.pw_confirm.set_placeholder_text("Confirm new password")
+        self.pw_confirm.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.pw_confirm.connect("activate", self._save_password)
+        for e in (self.pw_current, self.pw_new, self.pw_confirm):
+            inner.pack_start(e, False, False, 0)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        save = Gtk.Button(label="Save password")
+        save.get_style_context().add_class("suggested-action")
+        save.connect("clicked", self._save_password)
+        row.pack_start(save, False, False, 0)
+        self.pw_msg = Gtk.Label(xalign=0)
+        self.pw_msg.get_style_context().add_class("muted")
+        row.pack_start(self.pw_msg, True, True, 0)
+        inner.pack_start(row, False, False, 0)
+        box.pack_start(fr, False, False, 0)
+
+        fr, inner = card()
+        inner.pack_start(heading("Auto-lock"), False, False, 0)
+        inner.pack_start(muted("Lock automatically after the computer has been idle. Choose Off to disable this."), False, False, 0)
+        self.lock_idle = Gtk.ComboBoxText()
+        self._idle_values = [("0", "Off"), ("1", "1 minute"), ("2", "2 minutes"),
+                             ("5", "5 minutes"), ("10", "10 minutes"), ("15", "15 minutes"),
+                             ("30", "30 minutes"), ("60", "60 minutes")]
+        for val, lab in self._idle_values:
+            self.lock_idle.append(val, lab)
+        self.lock_idle.connect("changed", self._security_changed)
+        inner.pack_start(self.lock_idle, False, False, 0)
+        self.lock_sleep = Gtk.CheckButton(label="Lock when the computer wakes from sleep")
+        self.lock_sleep.connect("toggled", self._security_changed)
+        inner.pack_start(self.lock_sleep, False, False, 0)
+        lock_now = Gtk.Button(label="Lock now")
+        lock_now.connect("clicked", self._lock_now)
+        lock_now.set_halign(Gtk.Align.START)
+        inner.pack_start(lock_now, False, False, 0)
+        box.pack_start(fr, False, False, 0)
+
+        note = Gtk.Label(xalign=0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("muted")
+        note.set_markup(
+            "While the lock screen is up, switching to another console (Ctrl+Alt+F2…) is blocked.\n"
+            "After you unlock, other consoles still ask for a password. The live image also has a "
+            "<b>root</b> account with a default password — run <tt>sudo passwd root</tt> if others can reach a console."
+        )
+        box.pack_start(note, False, False, 0)
+        self._refresh_security()
+        return box
+
+    def _refresh_security(self):
+        st = password_status()
+        if st == "none":
+            self.sec_banner_lbl.set_markup(
+                "<b>Set a password</b> so Lock can protect this computer. Until you do, the lock screen will open this page instead."
+            )
+            self.sec_banner.show()
+            self.pw_status.set_text("No password is set.")
+            self.pw_current.set_sensitive(False)
+            self.pw_current.hide()
+        else:
+            self.sec_banner.hide()
+            self.pw_status.set_text("A password is set. Enter the current one to change it.")
+            self.pw_current.set_sensitive(True)
+            self.pw_current.show()
+        sec = load_security()
+        mins = sec.get("lock_minutes") or "10"
+        ids = [v for v, _ in self._idle_values]
+        if mins not in ids:
+            mins = "10"
+        try:
+            self.lock_idle.handler_block_by_func(self._security_changed)
+            self.lock_idle.set_active_id(mins)
+            self.lock_idle.handler_unblock_by_func(self._security_changed)
+        except TypeError:
+            self.lock_idle.set_active_id(mins)
+        try:
+            self.lock_sleep.handler_block_by_func(self._security_changed)
+            self.lock_sleep.set_active(sec.get("lock_on_sleep", "1") == "1")
+            self.lock_sleep.handler_unblock_by_func(self._security_changed)
+        except TypeError:
+            self.lock_sleep.set_active(sec.get("lock_on_sleep", "1") == "1")
+
+    def _prompt_set_password(self):
+        if password_status() != "none":
+            return False
+        dlg = Gtk.MessageDialog(
+            transient_for=self,
+            flags=0,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK,
+            text="Set a password",
+        )
+        dlg.format_secondary_text(
+            "This computer does not have a user password yet. Set one on the Security page so the lock screen can protect it."
+        )
+        dlg.set_keep_above(True)
+        dlg.run()
+        dlg.destroy()
+        return False
+
+    def _save_password(self, *_):
+        new = self.pw_new.get_text() or ""
+        confirm = self.pw_confirm.get_text() or ""
+        if not new:
+            self.pw_msg.set_text("Enter a new password.")
+            return
+        if new != confirm:
+            self.pw_msg.set_text("The two new passwords do not match.")
+            return
+        st = password_status()
+        if st == "none":
+            rc, out = run_cmd(["sudo", "-n", "ruke-passwd", "set"], timeout=8, input_text=new + "\n")
+        else:
+            old = self.pw_current.get_text() or ""
+            if not old:
+                self.pw_msg.set_text("Enter your current password.")
+                return
+            rc, out = run_cmd(["sudo", "-n", "ruke-passwd", "change"], timeout=8, input_text=old + "\n" + new + "\n")
+        if rc == 0:
+            self.pw_current.set_text("")
+            self.pw_new.set_text("")
+            self.pw_confirm.set_text("")
+            self.pw_msg.set_text("Password saved.")
+            self._refresh_security()
+        else:
+            err = (out or "").strip().splitlines()
+            self.pw_msg.set_text(err[-1] if err else "Couldn't save the password.")
+
+    def _security_changed(self, *_):
+        d = load_security()
+        d["lock_minutes"] = self.lock_idle.get_active_id() or "10"
+        d["lock_on_sleep"] = "1" if self.lock_sleep.get_active() else "0"
+        save_security(d)
+        if shutil.which("ruke-autolock"):
+            subprocess.Popen(
+                ["ruke-autolock"],
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+    def _lock_now(self, *_):
+        if password_status() == "none":
+            self.pw_msg.set_text("Set a password first.")
+            self.pw_new.grab_focus()
+            return
+        exe = shutil.which("ruke-lock") or shutil.which("slock")
+        if exe:
+            subprocess.Popen(
+                [exe],
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
     def _build_help(self):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         box.pack_start(heading("Help"), False, False, 0)
@@ -1158,9 +1500,21 @@ class SettingsWindow(Gtk.Window):
         )
         section(
             "Wi-Fi",
-            "Click the clock (or the Wi-Fi icon next to it) to open the quick panel and join a network.\n"
-            "Or open the menu → <b>Wi-Fi and Network</b> (or run <tt>nmtui</tt> in a terminal) → "
-            "Activate a connection → your network. A phone USB tether or an Ethernet cable also works.",
+            "Click the Wi-Fi icon next to the clock (or on the dock) for the Wi-Fi menu.\n"
+            "Click the clock for the quick panel (volume, brightness, and the same Wi-Fi list).",
+        )
+        section(
+            "Desktop",
+            "Files and shortcuts in <tt>~/Desktop</tt> show as icons on the wallpaper.\n"
+            "Right-click the desktop for New folder, New text file, Open terminal here, Add app shortcut, "
+            "and the rukeOS application menu. You can also drag a <tt>.desktop</tt> file onto the desktop.",
+        )
+        section(
+            "Lock screen",
+            "<b>Super</b>+<b>L</b>, the Lock button in the quick panel, or the menu locks the screen.\n"
+            "Set or change your password and auto-lock time in Settings \u2192 <b>Security</b>.\n"
+            "While locked, switching consoles (Ctrl+Alt+F2\u2026) is blocked. Other consoles still ask for a "
+            "password when unlocked; change the <b>root</b> password too if others can reach a console.",
         )
         section(
             "Keyboard shortcuts",
@@ -1168,6 +1522,7 @@ class SettingsWindow(Gtk.Window):
             "<b>Alt</b>+<b>F4</b>  close the window\n"
             "<b>Super</b>+<b>Enter</b>  or  <b>Ctrl</b>+<b>Alt</b>+<b>T</b>  terminal\n"
             "<b>Super</b>+<b>E</b>  files\n"
+            "<b>Super</b>+<b>L</b>  lock the screen\n"
             "<b>Super</b>+<b>Space</b>  application menu\n"
             "<b>Super</b>+<b>Up</b>  maximize    <b>Super</b>+<b>Down</b>  minimize",
         )
@@ -1632,6 +1987,387 @@ class TaskbarPreview(Gtk.Window):
             self.present()
 
 
+
+def _wallpaper_pixbuf(w, h):
+    for path in (
+        os.environ.get("RUKE_WALLPAPER") or "",
+        "/usr/share/backgrounds/rukeos.png",
+        "/workspace/judah-os/work/art/wallpaper.png",
+        "/workspace/judah-os/work/rootfs/usr/share/backgrounds/rukeos.png",
+    ):
+        if path and os.path.isfile(path):
+            try:
+                return GdkPixbuf.Pixbuf.new_from_file_at_scale(path, w, h, False)
+            except Exception:
+                continue
+    return None
+
+
+def add_shortcut_dialog():
+    """Pick an application and copy its .desktop file to ~/Desktop."""
+    desk = os.path.join(_home(), "Desktop")
+    os.makedirs(desk, exist_ok=True)
+    apps = []
+    seen = set()
+    for d in ("/usr/share/applications", os.path.join(_home(), ".local/share/applications")):
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not fn.endswith(".desktop"):
+                continue
+            path = os.path.join(d, fn)
+            name, icon, hidden, typ = fn[:-8], "", False, "Application"
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    text = f.read()
+            except OSError:
+                continue
+            if "\n[Desktop Entry]" not in "\n" + text:
+                continue
+            for line in text.splitlines():
+                if line.startswith("Name=") and "Name" not in (x.split("=", 1)[0] for x in []):
+                    pass
+            meta = {}
+            for line in text.splitlines():
+                if not line or line.startswith("#") or line.startswith("[") or "=" not in line:
+                    if line.startswith("[") and line.strip() != "[Desktop Entry]":
+                        break
+                    continue
+                k, v = line.split("=", 1)
+                if k in ("Name", "Icon", "Exec", "Type", "NoDisplay", "Hidden", "OnlyShowIn") and k not in meta:
+                    meta[k] = v
+            if meta.get("Type", "Application") != "Application":
+                continue
+            if meta.get("NoDisplay", "").lower() == "true" or meta.get("Hidden", "").lower() == "true":
+                continue
+            label = meta.get("Name") or fn[:-8]
+            if label in seen:
+                continue
+            seen.add(label)
+            apps.append((label, meta.get("Icon") or "", path, fn))
+    win = Gtk.Window(title="Add app shortcut")
+    try:
+        GLib.set_prgname("RukeDesktop")
+    except Exception:
+        pass
+    win.set_default_size(420, 480)
+    win.set_position(Gtk.WindowPosition.CENTER)
+    win.connect("destroy", Gtk.main_quit)
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    root.set_margin_start(14)
+    root.set_margin_end(14)
+    root.set_margin_top(12)
+    root.set_margin_bottom(12)
+    win.add(root)
+    root.pack_start(heading("Add app shortcut"), False, False, 0)
+    root.pack_start(muted("Pick an app to place on the desktop. You can also drag a .desktop file there."), False, False, 0)
+    sc = Gtk.ScrolledWindow()
+    sc.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    sc.set_vexpand(True)
+    lst = Gtk.ListBox()
+    lst.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    sc.add(lst)
+    root.pack_start(sc, True, True, 0)
+    rows = []
+    for label, icon, path, fn in apps:
+        row = Gtk.ListBoxRow()
+        hb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        hb.set_margin_start(8)
+        hb.set_margin_end(8)
+        hb.set_margin_top(6)
+        hb.set_margin_bottom(6)
+        img = icon_image(icon.replace("ruke-", "") if icon.startswith("ruke-") else "app-menu", 24)
+        if icon and not icon.startswith("ruke-"):
+            try:
+                img = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON)
+            except Exception:
+                pass
+        hb.pack_start(img, False, False, 0)
+        hb.pack_start(Gtk.Label(label=label, xalign=0), True, True, 0)
+        row.add(hb)
+        row._ruke_src = path
+        row._ruke_fn = fn
+        lst.add(row)
+        rows.append(row)
+    status = Gtk.Label(xalign=0)
+    status.get_style_context().add_class("muted")
+    btn = Gtk.Button(label="Add to desktop")
+    btn.get_style_context().add_class("suggested-action")
+
+    def _add(_=None):
+        row = lst.get_selected_row()
+        if row is None:
+            status.set_text("Select an application first.")
+            return
+        dest = os.path.join(desk, row._ruke_fn)
+        base, ext = os.path.splitext(row._ruke_fn)
+        n = 2
+        while os.path.exists(dest):
+            dest = os.path.join(desk, "%s %s%s" % (base, n, ext))
+            n += 1
+        try:
+            import shutil as sh
+            sh.copy2(row._ruke_src, dest)
+            os.chmod(dest, 0o755)
+            status.set_text("Added “%s” to the desktop." % os.path.basename(dest))
+        except OSError as e:
+            status.set_text(str(e))
+
+    btn.connect("clicked", _add)
+    lst.connect("row-activated", lambda *_: _add())
+    root.pack_start(status, False, False, 0)
+    root.pack_start(btn, False, False, 0)
+    win.show_all()
+    win.present()
+    Gtk.main()
+    return 0
+
+
+class DesktopPreview(Gtk.Window):
+    def __init__(self, screenshot=None):
+        Gtk.Window.__init__(self, title="rukeOS desktop")
+        self.set_default_size(1100, 640)
+        self.set_decorated(False)
+        self.set_name("taskbar-preview")
+        self.connect("destroy", Gtk.main_quit)
+        overlay = Gtk.Overlay()
+        self.add(overlay)
+        area = Gtk.DrawingArea()
+        area.connect("draw", self._draw_bg)
+        overlay.add(area)
+
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        overlay.add_overlay(col)
+
+        top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        top.get_style_context().add_class("taskbar-top")
+        top.set_size_request(-1, 36)
+        logo = Gtk.Label()
+        logo.set_markup("<b>rukeOS</b>")
+        top.pack_start(logo, False, False, 12)
+        top.pack_start(Gtk.Label(), True, True, 0)
+        top.pack_end(Gtk.Label(label="Tue 24 Nov   15:20"), False, False, 12)
+        top.pack_end(icon_image("network", 20), False, False, 8)
+        col.pack_start(top, False, False, 0)
+
+        mid = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        mid.set_hexpand(True)
+        mid.set_vexpand(True)
+        icons = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        icons.set_margin_start(28)
+        icons.set_margin_top(28)
+        icons.set_valign(Gtk.Align.START)
+        for name, label in (("files", "Files"), ("terminal", "Terminal"), ("browser", "Browser"), ("settings", "Settings")):
+            item = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            item.set_halign(Gtk.Align.CENTER)
+            item.pack_start(icon_image(name, 48), False, False, 0)
+            l = Gtk.Label(label=label)
+            l.set_markup('<span foreground="#c0caf5" size="small">%s</span>' % label)
+            item.pack_start(l, False, False, 0)
+            icons.pack_start(item, False, False, 0)
+        mid.pack_start(icons, False, False, 0)
+
+        # fake right-click menu
+        menu = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        menu.get_style_context().add_class("wifi-pass")
+        menu.set_valign(Gtk.Align.START)
+        menu.set_halign(Gtk.Align.START)
+        menu.set_margin_top(80)
+        menu.set_margin_start(40)
+        inner = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        inner.set_margin_start(8)
+        inner.set_margin_end(8)
+        inner.set_margin_top(8)
+        inner.set_margin_bottom(8)
+        for i, lab in enumerate((
+            "New folder", "New text file", "Open terminal here", "Add app shortcut...",
+            None, "Terminal", "Files", "Browser", "Settings",
+            None, "Lock", "Restart desktop", "Power off",
+        )):
+            if lab is None:
+                inner.pack_start(Gtk.Separator(), False, False, 6)
+                continue
+            l = Gtk.Label(label=lab, xalign=0)
+            l.set_margin_start(10)
+            l.set_margin_end(24)
+            l.set_margin_top(5)
+            l.set_margin_bottom(5)
+            if i == 0:
+                ev = Gtk.EventBox()
+                ev.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0.482, 0.310, 0.839, 1))
+                ev.add(l)
+                inner.pack_start(ev, False, False, 0)
+            else:
+                inner.pack_start(l, False, False, 0)
+        menu.pack_start(inner, False, False, 0)
+        mid.pack_start(menu, False, False, 0)
+        col.pack_start(mid, True, True, 0)
+
+        maybe_screenshot(self, screenshot)
+        if not screenshot:
+            self.show_all()
+            self.present()
+
+    def _draw_bg(self, w, cr):
+        alloc = w.get_allocation()
+        pb = _wallpaper_pixbuf(max(alloc.width, 1), max(alloc.height, 1))
+        if pb:
+            Gdk.cairo_set_source_pixbuf(cr, pb, 0, 0)
+            cr.paint()
+        else:
+            cr.set_source_rgb(0.102, 0.106, 0.149)
+            cr.paint()
+        return False
+
+
+class LockPreview(Gtk.Window):
+    def __init__(self, screenshot=None):
+        Gtk.Window.__init__(self, title="rukeOS lock")
+        self.set_default_size(1100, 640)
+        self.set_decorated(False)
+        self.connect("destroy", Gtk.main_quit)
+        area = Gtk.DrawingArea()
+        area.connect("draw", self._draw)
+        self.add(area)
+        maybe_screenshot(self, screenshot)
+        if not screenshot:
+            self.show_all()
+            self.present()
+
+    def _draw(self, w, cr):
+        alloc = w.get_allocation()
+        width, height = max(alloc.width, 1), max(alloc.height, 1)
+        pb = _wallpaper_pixbuf(width, height)
+        if pb:
+            Gdk.cairo_set_source_pixbuf(cr, pb, 0, 0)
+            cr.paint()
+            cr.set_source_rgba(0.102, 0.106, 0.149, 0.35)
+            cr.paint()
+        else:
+            cr.set_source_rgb(0.102, 0.106, 0.149)
+            cr.paint()
+        cx, cy = width / 2.0, height / 2.0 - 20
+        radius = 110
+        # ring
+        cr.set_line_width(8)
+        cr.set_source_rgb(0.482, 0.310, 0.839)  # #7B4FD6
+        cr.arc(cx, cy, radius, 0, 6.2832)
+        cr.stroke()
+        cr.set_source_rgba(0.102, 0.106, 0.149, 0.85)
+        cr.arc(cx, cy, radius - 8, 0, 6.2832)
+        cr.fill()
+        # time + date
+        cr.set_source_rgb(0.753, 0.792, 0.961)
+        cr.select_font_face("Inter", 0, 0)
+        cr.set_font_size(48)
+        text = "15:20"
+        xb, yb, tw, th, xa, ya = cr.text_extents(text)
+        cr.move_to(cx - tw / 2.0, cy - 8)
+        cr.show_text(text)
+        cr.set_font_size(16)
+        text = "Tuesday, 24 November"
+        xb, yb, tw, th, xa, ya = cr.text_extents(text)
+        cr.move_to(cx - tw / 2.0, cy + 22)
+        cr.show_text(text)
+        cr.set_font_size(18)
+        text = "rukeOS  ·  locked"
+        xb, yb, tw, th, xa, ya = cr.text_extents(text)
+        cr.move_to(cx - tw / 2.0, cy + radius + 36)
+        cr.show_text(text)
+        return False
+
+
+class FileManagerPreview(Gtk.Window):
+    """Tokyo Night PCManFM stand-in used for preview-files.png (host has no pcmanfm)."""
+
+    def __init__(self, screenshot=None):
+        Gtk.Window.__init__(self, title="Files")
+        self.set_default_size(900, 560)
+        self.set_name("files-preview")
+        try:
+            GLib.set_prgname("RukeFiles")
+        except Exception:
+            pass
+        pb = icon_pixbuf("files", 48)
+        if pb:
+            self.set_icon(pb)
+        self.connect("destroy", Gtk.main_quit)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.add(outer)
+
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        toolbar.get_style_context().add_class("taskbar-top")
+        toolbar.set_margin_start(8)
+        toolbar.set_margin_end(8)
+        toolbar.set_size_request(-1, 36)
+        for lab in ("◀", "▶", "↑", "🏠"):
+            b = Gtk.Button(label=lab)
+            b.set_relief(Gtk.ReliefStyle.NONE)
+            toolbar.pack_start(b, False, False, 0)
+        path = Gtk.Label(label="  /home/judah", xalign=0)
+        path.set_hexpand(True)
+        toolbar.pack_start(path, True, True, 8)
+        outer.pack_start(toolbar, False, False, 0)
+
+        body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        outer.pack_start(body, True, True, 0)
+
+        side = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        side.get_style_context().add_class("taskbar-top")
+        side.set_size_request(180, -1)
+        side.set_margin_top(8)
+        side.set_margin_start(8)
+        for name, lab in (("user", "Home"), ("files", "Desktop"), ("documents", "Documents"),
+                          ("downloads", "Downloads"), ("image-viewer", "Pictures"),
+                          ("video", "Videos"), ("music", "Music")):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.set_margin_start(10)
+            row.set_margin_end(10)
+            row.set_margin_top(4)
+            row.set_margin_bottom(4)
+            row.pack_start(icon_image(name, 20), False, False, 0)
+            l = Gtk.Label(label=lab, xalign=0)
+            if lab == "Home":
+                l.set_markup("<b>Home</b>")
+            row.pack_start(l, True, True, 0)
+            side.pack_start(row, False, False, 0)
+        body.pack_start(side, False, False, 0)
+
+        view = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        view.get_style_context().add_class("taskbar-preview")
+        grid = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=28)
+        grid.set_margin_start(28)
+        grid.set_margin_top(24)
+        grid.set_valign(Gtk.Align.START)
+        for name, lab in (("files", "Desktop"), ("documents", "Documents"),
+                          ("downloads", "Downloads"), ("image-viewer", "Pictures"),
+                          ("terminal", "Terminal.desktop"), ("browser", "Browser.desktop")):
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            col.set_halign(Gtk.Align.CENTER)
+            col.set_size_request(96, -1)
+            col.pack_start(icon_image(name, 48), False, False, 0)
+            l = Gtk.Label(label=lab)
+            l.set_line_wrap(True)
+            l.set_justify(Gtk.Justification.CENTER)
+            l.set_max_width_chars(12)
+            col.pack_start(l, False, False, 0)
+            grid.pack_start(col, False, False, 0)
+        view.pack_start(grid, True, True, 0)
+        body.pack_start(view, True, True, 0)
+
+        status = Gtk.Label(label="6 items", xalign=0)
+        status.get_style_context().add_class("muted")
+        status.set_margin_start(12)
+        status.set_margin_top(4)
+        status.set_margin_bottom(4)
+        outer.pack_end(status, False, False, 0)
+        maybe_screenshot(self, screenshot)
+        if not screenshot:
+            self.show_all()
+            self.present()
+
+
+
 class QuickPanel(Gtk.Window):
     def __init__(self, screenshot=None):
         Gtk.Window.__init__(self, title="Quick settings")
@@ -1984,8 +2720,15 @@ class QuickPanel(Gtk.Window):
         self.destroy()
         while Gtk.events_pending():
             Gtk.main_iteration()
-        if shutil.which("slock"):
-            subprocess.Popen(["slock"], start_new_session=True)
+        exe = shutil.which("ruke-lock") or shutil.which("slock")
+        if exe:
+            subprocess.Popen(
+                [exe],
+                start_new_session=True,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         else:
             run_cmd(["xset", "dpms", "force", "off"], timeout=3)
 
@@ -2264,10 +3007,15 @@ def write_pid(name):
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="ruke-settings", description="rukeOS Settings")
-    p.add_argument("--page", choices=("updates", "customization", "help"), default="updates")
+    p.add_argument("--page", choices=("updates", "customization", "security", "help"), default="updates")
     p.add_argument("--quickpanel", action="store_true", help="open the clock quick panel")
     p.add_argument("--wifi", action="store_true", help="open the Wi-Fi menu")
     p.add_argument("--preview-taskbar", action="store_true", help="render a dock/taskbar preview and exit")
+    p.add_argument("--preview-desktop", action="store_true", help="render a desktop-icons preview and exit")
+    p.add_argument("--preview-lock", action="store_true", help="render a lock-screen preview and exit")
+    p.add_argument("--preview-files", action="store_true", help="render a Files (PCManFM) theme preview and exit")
+    p.add_argument("--add-shortcut", action="store_true", help="pick an app and add a shortcut to the desktop")
+    p.add_argument("--prompt-password", action="store_true", help="open Security and ask to set a password if none is set")
     p.add_argument("--tray", action="store_true", help="Wi-Fi indicator for the top bar")
     p.add_argument("--apply-appearance", action="store_true", help="rewrite theme files from saved settings")
     p.add_argument("--apply-session", action="store_true", help="restore wallpaper and night light")
@@ -2298,6 +3046,20 @@ def main(argv=None):
         TaskbarPreview(screenshot=args.screenshot)
         Gtk.main()
         return 0
+    if args.preview_desktop:
+        DesktopPreview(screenshot=args.screenshot)
+        Gtk.main()
+        return 0
+    if args.preview_lock:
+        LockPreview(screenshot=args.screenshot)
+        Gtk.main()
+        return 0
+    if args.preview_files:
+        FileManagerPreview(screenshot=args.screenshot)
+        Gtk.main()
+        return 0
+    if args.add_shortcut:
+        return add_shortcut_dialog()
 
     if args.wifi:
         if not args.screenshot and toggle_instance("ruke-wifi"):
@@ -2347,7 +3109,7 @@ def main(argv=None):
                 pass
         return 0
 
-    SettingsWindow(page=args.page, demo=args.demo_updates, screenshot=args.screenshot)
+    SettingsWindow(page=args.page, demo=args.demo_updates, screenshot=args.screenshot, prompt_password=args.prompt_password)
     Gtk.main()
     return 0
 

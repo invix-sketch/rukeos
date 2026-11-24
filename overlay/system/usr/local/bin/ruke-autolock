@@ -1,0 +1,30 @@
+#!/bin/sh
+# Start, refresh, or stop idle auto-lock (xautolock). lock_minutes=0 means Off.
+CONF="${XDG_CONFIG_HOME:-$HOME/.config}/rukeos/security.conf"
+mins=10
+sleep_lock=1
+if [ -f "$CONF" ]; then
+  ev=$(awk -F= '/^lock_minutes=/{print $2}' "$CONF" | tail -1)
+  [ -n "$ev" ] && mins=$ev
+  sl=$(awk -F= '/^lock_on_sleep=/{print $2}' "$CONF" | tail -1)
+  [ -n "$sl" ] && sleep_lock=$sl
+fi
+
+pkill -u "$(id -u)" -x xautolock >/dev/null 2>&1 || true
+
+case "$mins" in
+  ''|0|off|Off|OFF) exit 0 ;;
+esac
+case "$mins" in
+  *[!0-9]*) exit 0 ;;
+esac
+[ "$mins" -gt 0 ] || exit 0
+command -v xautolock >/dev/null || exit 0
+[ -n "$DISPLAY" ] || exit 0
+
+extra=
+[ "$sleep_lock" = 1 ] && extra="-detectsleep"
+
+# -secure: don't unlock on mouse-in-corner tricks
+xautolock -time "$mins" -locker ruke-lock -nowlocker ruke-lock -corners 0000 -secure $extra &
+exit 0

@@ -1,5 +1,10 @@
 # rukeOS changelog
 
+## 0.4.2
+- Desktop icons: files and shortcuts in ~/Desktop show on the wallpaper (pcmanfm --desktop). Right-click the desktop for New folder, New text file, Open terminal here, Add app shortcut, and the rukeOS application menu. Seeded shortcuts: Files, Terminal, Browser, Settings.
+- Files (PCManFM, GTK3) and other GTK apps use a system-wide Tokyo Night dark theme (rukeOS-dark) and the purple rukeOS icon theme, applied to existing sticks by ruke-update.
+- Lock screen: a Tokyo Night / purple locker (i3lock-color) that asks for your user password. Lock with Super+L, the Lock button in the quick panel, or the menu. Settings → Security lets you set or change your password, pick an auto-lock idle time (or Off), and lock on wake from sleep. Console switching is blocked while the lock screen is up.
+
 ## 0.4.1
 - Dock and menu icons for Terminal, Files, Browser, Text Editor, Wi-Fi, Volume, Settings, Video, Music, Updates and Power use the rukeOS purple icon pack.
 - New Wi-Fi menu (click the Wi-Fi icon in the top bar or on the dock): dark Tokyo Night list, signal bars, lock for secured networks, connected network highlighted, and an in-menu password prompt.

@@ -6,4 +6,5 @@ if [ -d /usr/share/icons/Papirus/64x64 ] || [ -d /usr/share/icons/Papirus-Dark/6
     rm -rf /usr/share/icons/Papirus/$d /usr/share/icons/Papirus-Dark/$d; done
   gtk-update-icon-cache -f /usr/share/icons/Papirus; gtk-update-icon-cache -f /usr/share/icons/Papirus-Dark
 fi
+gtk-update-icon-cache -f /usr/share/icons/rukeOS 2>/dev/null || true
 exit 0

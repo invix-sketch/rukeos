@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Browser
+Comment=Browse the web
+Exec=ruke-browser %U
+Icon=ruke-browser
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true

@@ -1,0 +1,25 @@
+[Icon Theme]
+Name=rukeOS
+Comment=rukeOS purple icons, Papirus-Dark for everything else
+Inherits=Papirus-Dark,hicolor
+Example=ruke-files
+DisplayDepth=32
+
+Directories=24x24/apps,48x48/apps,scalable/apps
+
+[24x24/apps]
+Size=24
+Context=Applications
+Type=Fixed
+
+[48x48/apps]
+Size=48
+Context=Applications
+Type=Fixed
+
+[scalable/apps]
+Size=48
+MinSize=16
+MaxSize=256
+Context=Applications
+Type=Scalable

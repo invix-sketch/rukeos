@@ -1,6 +1,11 @@
 <?xml version="1.0"?>
 <JWM>
   <RootMenu onroot="3" label="rukeOS" height="22">
+    <Program icon="folder-new" label="New folder">ruke-desktop new-folder</Program>
+    <Program icon="document-new" label="New text file">ruke-desktop new-text</Program>
+    <Program icon="utilities-terminal" label="Open terminal here">ruke-desktop terminal</Program>
+    <Program icon="ruke-app-menu" label="Add app shortcut...">ruke-desktop add-shortcut</Program>
+    <Separator/>
     <Program icon="utilities-terminal" label="Terminal">xterm</Program>
     <Program icon="system-file-manager" label="Files">pcmanfm</Program>
     <Program icon="accessories-text-editor" label="Text Editor">mousepad</Program>
@@ -13,6 +18,7 @@
     <Program icon="utilities-system-monitor" label="Task Manager">xterm -T Tasks -e htop</Program>
     <Program icon="ruke-settings" label="Settings">ruke-settings</Program>
     <Separator/>
+    <Program icon="system-lock-screen" label="Lock">ruke-lock</Program>
     <Restart label="Restart desktop" icon="view-refresh"/>
     <Program label="Reboot" icon="system-reboot">sudo reboot</Program>
     <Program label="Power off" icon="system-shutdown">sudo poweroff</Program>
@@ -98,4 +104,5 @@
   <Key mask="4" key="Up">maximize</Key>
   <Key mask="4" key="Down">minimize</Key>
   <Key mask="CA" key="t">exec:xterm</Key>
+  <Key mask="4" key="l">exec:ruke-lock</Key>
 </JWM>
