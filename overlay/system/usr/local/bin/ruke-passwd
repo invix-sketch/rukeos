@@ -1,35 +1,132 @@
 #!/usr/bin/python3
-"""status / set / change the desktop user's password. Run as root (sudo -n)."""
+"""status / set / change the desktop user's password. Run as root (sudo -n).
+
+Writes /etc/shadow (login, lock screen, and any sudo that asks) and fsyncs
+the file plus the rukeos-data persistence volume so the change survives reboot.
+"""
 from __future__ import annotations
 
-import crypt
 import os
-import spwd
 import subprocess
 import sys
 
+try:
+    import crypt
+except ImportError:
+    crypt = None
+
+try:
+    import spwd
+except ImportError:
+    spwd = None
+
 
 def target_user():
-    return os.environ.get("SUDO_USER") or os.environ.get("RUKE_USER") or ""
+    for name in (os.environ.get("SUDO_USER"), os.environ.get("RUKE_USER")):
+        name = (name or "").strip()
+        if name and name != "root" and name != "nobody":
+            return name
+    # Primary desktop account (uid 1000), not root.
+    try:
+        for line in open("/etc/passwd", encoding="utf-8"):
+            parts = line.split(":")
+            if len(parts) >= 3 and parts[2] == "1000":
+                return parts[0]
+    except OSError:
+        pass
+    return ""
 
 
 def shadow_hash(name):
-    try:
-        return spwd.getspnam(name).sp_pwdp
-    except PermissionError:
-        return None
-    except KeyError:
+    if spwd is not None:
+        try:
+            return spwd.getspnam(name).sp_pwdp
+        except PermissionError:
+            return None
+        except KeyError:
+            return ""
+    p = subprocess.run(
+        ["passwd", "-S", name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    out = (p.stdout or "").split()
+    if len(out) >= 2 and out[1] in ("NP", "NK", "Empty"):
         return ""
+    return "?"
 
 
 def is_empty(h):
     return (not h) or h in ("!", "*", "!!", "!*", "")
 
 
+def crypt_check(password, hashed):
+    """Return True if password matches the shadow hash."""
+    if not hashed or hashed == "?":
+        return False
+    got = None
+    if crypt is not None:
+        try:
+            got = crypt.crypt(password, hashed)
+        except Exception:
+            got = None
+        if got is not None and got == hashed:
+            return True
+    # libc crypt(3) — covers yescrypt ($y$) on musl/libxcrypt when Python's
+    # crypt module is missing or does not understand the method.
+    try:
+        import ctypes
+        import ctypes.util
+        lib = ctypes.CDLL(ctypes.util.find_library("crypt") or ctypes.util.find_library("c"))
+        lib.crypt.restype = ctypes.c_char_p
+        lib.crypt.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+        got = lib.crypt(password.encode("utf-8"), hashed.encode("utf-8"))
+        if got:
+            return got.decode("utf-8", "replace") == hashed
+    except Exception:
+        pass
+    return False
+
+
+def persist_shadow():
+    """Flush /etc/shadow to disk, including the USB persistence volume."""
+    for path in ("/etc/shadow", "/etc/shadow-", "/etc/passwd", "/etc/passwd-"):
+        try:
+            fd = os.open(path, os.O_RDONLY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        except OSError:
+            pass
+    try:
+        os.sync()
+    except Exception:
+        pass
+    persist = ""
+    try:
+        persist = open("/media/.persist-device", encoding="utf-8").read().strip()
+    except OSError:
+        persist = ""
+    if persist and persist != "none":
+        for target in ("/etc/shadow", "/media/.rw", "/"):
+            subprocess.run(
+                ["sync", "-f", target],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+
 def status(name):
     h = shadow_hash(name)
     if h is None:
-        p = subprocess.run(["passwd", "-S", name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        p = subprocess.run(
+            ["passwd", "-S", name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
         out = (p.stdout or "").split()
         if len(out) >= 2 and out[1] in ("NP", "NK", "Empty"):
             print("none")
@@ -47,10 +144,17 @@ def set_password(name, new):
     if not new:
         print("empty password is not allowed", file=sys.stderr)
         return 1
-    p = subprocess.run(["chpasswd"], input="%s:%s\n" % (name, new), text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    p = subprocess.run(
+        ["chpasswd"],
+        input="%s:%s\n" % (name, new),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
     if p.returncode != 0:
         sys.stderr.write(p.stdout or "chpasswd failed\n")
         return p.returncode
+    persist_shadow()
     return 0
 
 
@@ -86,7 +190,7 @@ def main(argv):
             print("cannot read shadow", file=sys.stderr)
             return 1
         if not is_empty(h):
-            if crypt.crypt(old, h) != h:
+            if not crypt_check(old, h):
                 print("current password is wrong", file=sys.stderr)
                 return 3
         return set_password(name, new)

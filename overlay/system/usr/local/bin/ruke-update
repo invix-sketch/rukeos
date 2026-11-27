@@ -29,7 +29,25 @@ step() { printf '%s==>%s %s%s%s\n' "$C" "$N" "$B" "$*" "$N"; }
 warn() { printf '%s!!%s %s\n' "$Y" "$N" "$*"; }
 die()  { printf '%sxx%s %s\n' "$R" "$N" "$*"; exit 1; }
 # run apk, show its lines indented, keep a copy in $1 and in the log; warn on errors
-run_apk() { out=$1; shift; { apk --no-progress "$@" 2>&1; echo "rc=$?"; } | tee "$out" | awk '!/^rc=/{print "   " $0; fflush()}'; cat "$out" >&3
+# Wait for another apk (App store, a previous update) to drop the database lock.
+wait_apk() {
+  n=0
+  while [ $n -lt 40 ]; do
+    busy=0
+    pgrep -x apk >/dev/null 2>&1 && busy=1
+    if [ "$busy" = 0 ] && [ -e /lib/apk/db/lock ] && command -v flock >/dev/null; then
+      flock -n /lib/apk/db/lock true 2>/dev/null || busy=1
+    fi
+    [ "$busy" = 0 ] && return 0
+    say "Waiting for another install to finish…"
+    sleep 3
+    n=$((n+1))
+  done
+  warn "apk is still busy after two minutes"
+  return 1
+}
+run_apk() { out=$1; shift; wait_apk || true
+  { apk --no-progress "$@" 2>&1; echo "rc=$?"; } | tee "$out" | awk '!/^rc=/{print "   " $0; fflush()}'; cat "$out" >&3
   grep -q '^rc=0$' "$out" || warn "apk $1 reported problems (see $LOG)"; }
 fetch() { wget -q -T 20 -O "$2" "$1" 2>/dev/null || { command -v curl >/dev/null && curl -fsSL --max-time 300 -o "$2" "$1"; }; }
 
@@ -87,9 +105,10 @@ fi
 # ---- 3. system packages ----
 # The kernel comes from the USB stick, not from apk: never let apk replace its modules.
 step "Refreshing package lists (apk update)"
+wait_apk || true
 apk update --no-progress >&3 2>&1 || die "apk update failed (no internet?). See $LOG"
 kv=$(apk list -I linux-lts 2>/dev/null | sed -n 's/^linux-lts-\([^ ]*\) .*/\1/p' | head -1)
-[ -n "$kv" ] && ! grep -qx "linux-lts=$kv" /etc/apk/world && apk add -q --no-progress "linux-lts=$kv" >&3 2>&1
+[ -n "$kv" ] && ! grep -qx "linux-lts=$kv" /etc/apk/world && { wait_apk || true; apk add -q --no-progress "linux-lts=$kv" >&3 2>&1; }
 nup=0
 if [ $UPGRADE = 1 ]; then
   step "Upgrading system packages (apk upgrade)"
@@ -104,7 +123,7 @@ if [ -n "$missing" ]; then
   run_apk "$T/add.log" add $want; nin=$(grep -c 'Installing' "$T/add.log")
 fi
 gone=$(sed 's/#.*//' "$SRC/remove.txt" 2>/dev/null | tr -s ' \t\r' '\n' | grep -v '^$')
-for p in $gone; do apk info -e "$p" >/dev/null 2>&1 && apk del -q --no-progress "$p" >&3 2>&1 && say "   removed $p"; done
+for p in $gone; do apk info -e "$p" >/dev/null 2>&1 && { wait_apk || true; apk del -q --no-progress "$p" >&3 2>&1 && say "   removed $p"; }; done
 
 # ---- 4. rukeOS files (overlay) ----
 step "Applying rukeOS files"

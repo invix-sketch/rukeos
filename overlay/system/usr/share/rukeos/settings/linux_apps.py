@@ -5,6 +5,11 @@ import os
 import shutil
 import subprocess
 
+try:
+    import apk_job
+except ImportError:
+    apk_job = None
+
 APPS = [
     {
         "id": "gimp",
@@ -77,7 +82,11 @@ def _home():
     return os.environ.get("HOME") or os.path.expanduser("~")
 
 
-def _run(cmd, progress=None):
+def _run_apk(apk_args, progress=None):
+    if apk_job is not None:
+        return apk_job.run_apk(apk_args, progress=progress)
+    # Fallback if the helper is missing: still try sudo apk once.
+    cmd = ["sudo", "-n", "apk", "--no-progress"] + list(apk_args)
     proc = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -175,7 +184,7 @@ def install_app(app, progress=None):
         return 1, "No package is listed for this app."
     if progress:
         progress("Installing " + ", ".join(pkgs) + "…")
-    rc, log = _run(["sudo", "-n", "apk", "add", "--no-progress"] + pkgs, progress)
+    rc, log = _run_apk(["add"] + pkgs, progress)
     if rc == 0:
         return 0, app["name"] + " is installed. You can open it from the menu."
     tail = "\n".join(log.splitlines()[-8:]) if log else "apk failed"
@@ -190,7 +199,7 @@ def remove_app(app, progress=None):
         return 1, "No package is listed for this app."
     if progress:
         progress("Removing " + ", ".join(pkgs) + "…")
-    rc, log = _run(["sudo", "-n", "apk", "del", "--no-progress"] + pkgs, progress)
+    rc, log = _run_apk(["del"] + pkgs, progress)
     if rc == 0:
         return 0, app["name"] + " was removed."
     tail = "\n".join(log.splitlines()[-8:]) if log else "apk failed"

@@ -45,7 +45,7 @@ fi
 css=/usr/share/themes/rukeOS-dark/gtk-3.0/gtk.css
 if [ -f "$css" ] && grep -q 'resource:///org/gtk/libgtk/theme/Adwaita/' "$css"; then
   tmp=$(mktemp)
-  grep -v 'resource:///org/gtk/libgtk/theme/Adwaita/' "$css" | grep -v '@import url' > "$tmp" || true
+  grep -v 'resource:///org/gtk/libgtk/theme/Adwaita/' "$css" > "$tmp" || true
   mv -f "$tmp" "$css"
 fi
 

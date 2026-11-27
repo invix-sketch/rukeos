@@ -1,30 +1,34 @@
-/* rukeOS-dark: self-contained Tokyo Night GTK3 theme.
-   Do not @import Adwaita-dark: a missing resource/file makes GTK reject this
-   entire stylesheet and fall back to Adwaita light (white Files, light chrome). */
-@define-color accent_color #9B45FF;
-@define-color accent_bg_color #9B45FF;
+/* rukeOS-dark: Adwaita-dark (shipped as a local file) + Tokyo Night colors.
+   A failed resource:// @import used to discard the whole theme and fall back
+   to Adwaita light (white Files, file choosers, and chrome). */
+@import url("gtk-contained-dark.css");
+
+/* Standard text-editing keys (Mousepad and other GTK apps).
+   Do not set gtk-key-theme-name to Emacs: that makes Ctrl+A go to the
+   start of the line instead of Select all. */
+@binding-set ruke-textview {
+  bind "<Control>a" { "select-all" (1) };
+  bind "<Control>A" { "select-all" (1) };
+  bind "<Control>c" { "copy-clipboard" () };
+  bind "<Control>C" { "copy-clipboard" () };
+  bind "<Control>x" { "cut-clipboard" () };
+  bind "<Control>X" { "cut-clipboard" () };
+  bind "<Control>v" { "paste-clipboard" () };
+  bind "<Control>V" { "paste-clipboard" () };
+}
+textview, textview view, textview text {
+  -gtk-key-bindings: ruke-textview;
+}
+
+
+@define-color accent_color #7B4FD6;
+@define-color accent_bg_color #7B4FD6;
 @define-color accent_fg_color #ffffff;
-@define-color window_bg_color #1a1b26;
-@define-color window_fg_color #c0caf5;
-@define-color view_bg_color #1a1b26;
-@define-color view_fg_color #c0caf5;
-@define-color headerbar_bg_color #16161e;
-@define-color headerbar_fg_color #c0caf5;
-@define-color headerbar_backdrop_color #16161e;
-@define-color headerbar_shade_color rgba(0,0,0,0.3);
-@define-color sidebar_bg_color #16161e;
-@define-color sidebar_fg_color #a9b1d6;
-@define-color sidebar_backdrop_color #16161e;
-@define-color popover_bg_color #24283b;
-@define-color popover_fg_color #c0caf5;
-@define-color dialog_bg_color #24283b;
-@define-color dialog_fg_color #c0caf5;
-@define-color card_bg_color #24283b;
 @define-color theme_bg_color #1a1b26;
 @define-color theme_fg_color #c0caf5;
 @define-color theme_base_color #1a1b26;
 @define-color theme_text_color #c0caf5;
-@define-color theme_selected_bg_color #9B45FF;
+@define-color theme_selected_bg_color #7B4FD6;
 @define-color theme_selected_fg_color #ffffff;
 @define-color theme_unfocused_bg_color #1a1b26;
 @define-color theme_unfocused_fg_color #c0caf5;
@@ -36,24 +40,61 @@
 @define-color insensitive_fg_color #565f89;
 @define-color insensitive_base_color #16161e;
 @define-color borders #3b3f51;
+@define-color unfocused_borders #2a2e3f;
+@define-color unfocused_insensitive_color #565f89;
 @define-color content_view_bg #1a1b26;
-@define-color wm_bg #16161e;
+@define-color text_view_bg #1a1b26;
+@define-color warning_color #e0af68;
+@define-color error_color #f7768e;
+@define-color success_color #9ece6a;
+@define-color window_bg_color #1a1b26;
+@define-color window_fg_color #c0caf5;
+@define-color view_bg_color #1a1b26;
+@define-color view_fg_color #c0caf5;
+@define-color headerbar_bg_color #16161e;
+@define-color headerbar_fg_color #c0caf5;
+@define-color headerbar_backdrop_color #16161e;
+@define-color sidebar_bg_color #16161e;
+@define-color sidebar_fg_color #a9b1d6;
+@define-color sidebar_backdrop_color #16161e;
+@define-color popover_bg_color #24283b;
+@define-color popover_fg_color #c0caf5;
+@define-color dialog_bg_color #1a1b26;
+@define-color dialog_fg_color #c0caf5;
+@define-color card_bg_color #24283b;
+@define-color wm_bg_a #16161e;
+@define-color wm_bg_b #1a1b26;
 @define-color wm_title #c0caf5;
+@define-color wm_unfocused_title #565f89;
+@define-color wm_highlight #24283b;
+@define-color wm_border #16161e;
+@define-color wm_shadow #000000;
+@define-color wm_borders_edge #3b3f51;
+@define-color wm_button_hover_color_a #24283b;
+@define-color wm_button_hover_color_b #24283b;
+@define-color wm_button_active_color_a #7B4FD6;
+@define-color wm_button_active_color_b #7B4FD6;
+@define-color wm_button_active_color_c #7B4FD6;
 
-window, window.background, .background, .csd, .solid-csd,
-dialog, messagedialog, decoration, decoration-overlay {
+/* Literal Adwaita-dark hex values are overridden here so every widget
+   actually becomes Tokyo Night (named colors alone do not rewrite inlined hex). */
+.background, window, window.background, .csd, .solid-csd,
+dialog, messagedialog, window.popup, decoration, decoration-overlay,
+.gtkstyle-fallback {
   background-color: #1a1b26;
   color: #c0caf5;
+  background-image: none;
 }
 
-headerbar, .titlebar, menubar, toolbar, .toolbar, .primary-toolbar {
+headerbar, .titlebar, menubar, toolbar, .toolbar, .primary-toolbar,
+.bottom-bar, actionbar, statusbar, searchbar, .search-bar {
   background-color: #16161e;
   background-image: none;
   color: #c0caf5;
   border-color: #3b3f51;
 }
 
-/* File / icon / list views — the usual PCManFM white hole */
+/* File / icon / list views (PCManFM's white hole) */
 .view, .view:not(:selected),
 iconview, iconview.view, iconview.view:not(:selected),
 treeview, treeview.view,
@@ -64,6 +105,7 @@ scrolledwindow, scrolledwindow > viewport, scrolledwindow > viewport > *,
 overlay, stack, notebook, notebook > stack,
 paned, paned > *,
 .content, .content-view, .content-view .view,
+.content-view .tile,
 FmMainWin, FmStandardView, FmDirTreeView, FmPlacesView, FmTabPage,
 #FmStandardView, #fm-standard-view, .fm-standard-view, .fm-icon-view, .fm-thumbnail-view {
   background-color: #1a1b26;
@@ -76,7 +118,6 @@ iconview, iconview.view, FmStandardView, #FmStandardView {
   color: #c0caf5;
 }
 
-/* Cells must be transparent so the view background shows, not a white tile */
 .cell, iconview.view .cell, iconview .cell, treeview.view .cell, .view .cell {
   background-color: transparent;
   background-image: none;
@@ -93,12 +134,18 @@ row:selected, list row:selected, listbox row:selected {
   color: #ffffff;
 }
 
-treeview.view, FmPlacesView, FmDirTreeView, .sidebar, stacksidebar, placessidebar, filechooser .sidebar {
+/* Places / tree side panes */
+treeview.view, FmPlacesView, FmDirTreeView,
+.sidebar, stacksidebar, placessidebar,
+placessidebar .view, placessidebar list, placessidebar viewport,
+list.sidebar, list.sidebar row, .sidebar-pane {
   background-color: #16161e;
+  background-image: none;
   color: #a9b1d6;
 }
 
-treeview.view:hover, iconview:hover, .view:hover, list row:hover, listbox row:hover {
+treeview.view:hover, iconview:hover, .view:hover, list row:hover, listbox row:hover,
+placessidebar row:hover, list.sidebar row:hover {
   background-color: rgba(155, 69, 255, 0.12);
   color: #c0caf5;
 }
@@ -109,22 +156,79 @@ list, listbox, list row, listbox row, row, .activatable {
   color: #c0caf5;
 }
 
-entry, entry.flat, spinbutton, spinbutton entry, search entry, combobox entry {
+/* File chooser (Open music, Open video, wallpaper, GTK file dialogs) */
+filechooser, filechooser.background, filechooser .dialog-vbox,
+filechooser .dialog-action-box, filechooser box, filechooser paned,
+filechooser paned > box, filechooser paned > widget,
+filechooser scrolledwindow, filechooser viewport,
+filechooser .view, filechooser iconview, filechooser treeview,
+filechooser list, filechooser listbox {
+  background-color: #1a1b26;
+  background-image: none;
+  color: #c0caf5;
+  border-color: #3b3f51;
+}
+filechooser placessidebar,
+filechooser .sidebar,
+filechooser list.sidebar,
+filechooser placessidebar .view,
+filechooser placessidebar list,
+filechooser placessidebar row,
+filechooser list.sidebar row,
+placessidebar row, list.sidebar row {
+  background-color: #16161e;
+  background-image: none;
+  color: #a9b1d6;
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+filechooser placessidebar row:selected,
+filechooser list.sidebar row:selected,
+placessidebar row:selected, list.sidebar row:selected {
+  background-color: rgba(155, 69, 255, 0.38);
+  color: #ffffff;
+}
+/* Path bar next to the current folder name */
+.path-bar, .path-bar.linked, filechooser .path-bar,
+.path-bar button, filechooser .path-bar button,
+.pathbar, .pathbar button,
+filechooser button.path-bar, filechooser .linked button,
+filechooser .header-bar button, filechooser toolbar button {
+  background-color: #24283b;
+  background-image: none;
+  color: #c0caf5;
+  border-color: #3b3f51;
+  box-shadow: none;
+  text-shadow: none;
+}
+.path-bar button:hover, filechooser .path-bar button:hover,
+.path-bar button:checked, filechooser .path-bar button:checked,
+.path-bar button:selected {
+  background-color: rgba(155, 69, 255, 0.28);
+  background-image: none;
+  color: #ffffff;
+}
+
+entry, entry.flat, spinbutton, spinbutton entry, search entry, combobox entry,
+filechooser entry {
   background-color: #24283b;
   background-image: none;
   color: #c0caf5;
   border: 1px solid #3b3f51;
   border-radius: 8px;
+  box-shadow: none;
 }
-entry:focus { border-color: #9B45FF; }
+entry:focus, filechooser entry:focus { border-color: #7B4FD6; }
 
-button, button.flat, toolbutton, combobox > box, .path-bar button,
+button, button.flat, toolbutton, combobox > box,
 togglebutton, button.toggle {
   background-color: #24283b;
   background-image: none;
   color: #c0caf5;
   border-color: #3b3f51;
   text-shadow: none;
+  box-shadow: none;
 }
 button:hover, toolbutton:hover, togglebutton:hover {
   background-color: rgba(155, 69, 255, 0.18);
@@ -137,29 +241,44 @@ button:active, button:checked, button.toggle:checked, togglebutton:checked, togg
   box-shadow: none;
 }
 button:selected, button.selected, button.selected:hover, button.selected:focus, button.selected:active {
-  background-color: #9B45FF;
+  background-color: #7B4FD6;
   background-image: none;
   color: #ffffff;
   box-shadow: none;
 }
 button.selected label, button:checked label, togglebutton:checked label { color: #ffffff; }
-button.suggested-action { background-color: #9B45FF; background-image: none; color: #ffffff; }
+button.suggested-action, button.suggested-action:hover, button.suggested-action:focus,
+button.suggested-action:active, button.suggested-action:checked, button.suggested-action:backdrop {
+  background-color: #7B4FD6;
+  background-image: none;
+  color: #ffffff;
+  border: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+button.suggested-action label { color: #ffffff; }
 
-/* Switches: Adwaita-light :checked is a pale/white track */
+/* Pill switch (without Adwaita's geometry the knob becomes a split square) */
 switch {
   background-color: #414868;
   background-image: none;
   border: none;
   box-shadow: none;
-  color: #c0caf5;
-  min-width: 42px;
+  color: transparent;
+  font-size: 0;
+  min-width: 44px;
+  min-height: 22px;
+  padding: 2px;
+  border-radius: 999px;
+  outline: none;
 }
 switch:hover { background-color: #4a5270; background-image: none; }
 switch:checked, switch:checked:hover, switch:checked:backdrop, switch:checked:disabled {
-  background-color: #9B45FF;
+  background-color: #7B4FD6;
   background-image: none;
   border: none;
   box-shadow: none;
+  color: transparent;
 }
 switch slider {
   background-color: #c0caf5;
@@ -168,6 +287,8 @@ switch slider {
   box-shadow: none;
   min-width: 18px;
   min-height: 18px;
+  margin: 1px;
+  border-radius: 999px;
 }
 switch:checked slider { background-color: #ffffff; background-image: none; }
 
@@ -177,9 +298,7 @@ menu, .menu, .context-menu, popover, popover.background, popover.menu, tooltip, 
   color: #c0caf5;
   border-color: #3b3f51;
 }
-menuitem:hover, modelbutton:hover { background-color: #9B45FF; color: #ffffff; }
-
-statusbar, .bottom-bar, actionbar { background-color: #16161e; color: #565f89; }
+menuitem:hover, modelbutton:hover { background-color: #7B4FD6; color: #ffffff; }
 
 notebook > header, notebook > header tabs, notebook > header tab {
   background-color: #16161e;
@@ -189,19 +308,31 @@ notebook > header, notebook > header tabs, notebook > header tab {
 notebook > header tab:checked {
   background-color: #24283b;
   color: #ffffff;
-  box-shadow: inset 0 -2px #9B45FF;
+  box-shadow: inset 0 -2px #7B4FD6;
 }
 
 scrollbar, scrollbar trough { background-color: #1a1b26; }
 scrollbar slider { background-color: rgba(192, 202, 245, 0.28); border-radius: 8px; min-width: 6px; min-height: 6px; }
-scrollbar slider:hover { background-color: #9B45FF; }
+scrollbar slider:hover { background-color: #7B4FD6; }
 
 separator, paned > separator { background-color: #16161e; min-width: 1px; min-height: 1px; }
 
+/* Kill the etched black bevel some GTK frames / scrolled windows draw */
+scrolledwindow, viewport, overshoot.top, overshoot.bottom, overshoot.left, overshoot.right,
+undershoot.top, undershoot.bottom, undershoot.left, undershoot.right, junction, frame,
+.frame, GtkScrolledWindow, GtkViewport {
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
 rubberband, .rubberband, .view rubberband, flowbox rubberband {
   background-color: rgba(155, 69, 255, 0.20);
-  border: 1px solid #9B45FF;
+  border: 1px solid #7B4FD6;
 }
+
+scale highlight { background-color: #7B4FD6; }
+scale trough { background-color: #16161e; }
 
 /* Desktop wallpaper stays visible under pcmanfm --desktop */
 window.desktop, window#fm-desktop, #fm-desktop, .fm-desktop, FmDesktop, window.background.desktop {

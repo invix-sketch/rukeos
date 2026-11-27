@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Search the winget-pkgs catalog and install classic Windows installers under Wine."""
 from __future__ import print_function
+try:
+    import apk_job
+except ImportError:
+    apk_job = None
 
 import hashlib
 import json
@@ -470,18 +474,21 @@ def install_wine():
         return 1, arch_message()
     if wine_ok():
         return 0, "Wine is already installed."
-    sudo = shutil.which("sudo") or "sudo"
     try:
-        p = subprocess.run(
-            [sudo, "apk", "add", "--no-progress", "wine"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=600,
-        )
-        out = p.stdout or ""
-        if p.returncode != 0:
-            return p.returncode, out.strip() or "Couldn't install Wine."
+        if apk_job is not None:
+            rc, out = apk_job.run_apk(["add", "wine"], timeout=600)
+        else:
+            sudo = shutil.which("sudo") or "sudo"
+            p = subprocess.run(
+                [sudo, "apk", "add", "--no-progress", "wine"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                timeout=600,
+            )
+            rc, out = p.returncode, (p.stdout or "")
+        if rc != 0:
+            return rc, (out or "").strip() or "Couldn't install Wine."
         if not wine_ok():
             return 1, "apk finished but the wine command is still missing."
         return 0, "Wine is installed."

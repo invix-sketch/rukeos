@@ -27,13 +27,18 @@ if command -v i3lock >/dev/null; then
   bg=/usr/share/rukeos/lock-background.png
   img=
   [ -f "$bg" ] && img="--image=$bg --fill"
-  i3lock --nofork \
+  fade=
+  anim=$(awk -F= '/^animations=/{print $2}' "${XDG_CONFIG_HOME:-$HOME/.config}/rukeos/appearance.conf" 2>/dev/null || true)
+  if [ "$anim" != off ] && i3lock --help 2>&1 | grep -q fade-in; then
+    fade="--fade-in=0.15"
+  fi
+  i3lock --nofork $fade \
     --ignore-empty-password \
     --show-failed-attempts \
     --indicator --clock \
     --color=1a1b26 \
     $img \
-    --inside-color=1a1b26ff --ring-color=9B45FFff \
+    --inside-color=1a1b26ff --ring-color=7B4FD6ff \
     --insidever-color=24283bff --ringver-color=7aa2f7ff \
     --insidewrong-color=24283bff --ringwrong-color=f7768eff \
     --line-color=00000000 --separator-color=00000000 \

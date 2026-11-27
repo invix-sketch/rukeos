@@ -1,0 +1,6 @@
+#%PAM-1.0
+# Lock screen uses the same /etc/shadow password as console login.
+auth      include    base-auth
+account   include    base-account
+password  include    base-password
+session   include    base-session-noninteractive

@@ -1,0 +1,55 @@
+#!/bin/sh
+# Start, stop, or restart picom from the Settings → Customization → Animations value.
+# Usage: ruke-compositor [on|reduced|off|restart|status]
+# If no argument is given, the saved setting (or a RAM-based default) is used.
+set -e
+LEVEL=${1:-}
+CONF_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+APPEAR=$CONF_HOME/rukeos/appearance.conf
+SHARE=/usr/share/rukeos/picom
+
+mem_default() {
+  kb=$(awk '/MemTotal:/{print $2}' /proc/meminfo 2>/dev/null)
+  [ -n "$kb" ] && [ "$kb" -lt 768000 ] 2>/dev/null && echo reduced || echo on
+}
+
+saved() {
+  [ -f "$APPEAR" ] || { mem_default; return; }
+  awk -F= '/^animations=/{print $2; found=1} END{if(!found) exit 1}' "$APPEAR" && return
+  mem_default
+}
+
+if [ -z "$LEVEL" ] || [ "$LEVEL" = restart ]; then
+  LEVEL=$(saved)
+fi
+case "$LEVEL" in
+  on|reduced|off) ;;
+  status) echo "$(saved)"; exit 0;;
+  *) LEVEL=$(mem_default);;
+esac
+
+# Always stop the current compositor first so we never leave two picoms.
+pkill -x picom 2>/dev/null || true
+# Give it a moment to drop the compositor selection.
+i=0; while [ $i -lt 10 ] && pgrep -x picom >/dev/null; do sleep 0.05; i=$((i+1)); done
+
+if [ "$LEVEL" = off ]; then
+  exit 0
+fi
+command -v picom >/dev/null || exit 0
+[ -n "$DISPLAY" ] || exit 0
+
+src=$SHARE/picom-$LEVEL.conf
+[ -f "$src" ] || src=$SHARE/picom-reduced.conf
+dst=$CONF_HOME/picom/picom.conf
+mkdir -p "$CONF_HOME/picom"
+# Keep a copy next to the running config so a custom picom.conf can be replaced
+# only when we are managing it (we always write the managed file from /usr/share).
+cp -f "$src" "$dst"
+
+# xrender is the 512 MB fallback. If picom fails, stay without a compositor.
+if ! picom -b --config "$dst" --backend xrender >/tmp/ruke-picom.log 2>&1; then
+  pkill -x picom 2>/dev/null || true
+  exit 1
+fi
+exit 0

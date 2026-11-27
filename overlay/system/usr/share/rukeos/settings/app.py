@@ -22,7 +22,7 @@ from gi.repository import Gtk, Gdk, GLib, GdkPixbuf, Pango
 
 # Tokyo Night + Judah's icon-pack purple
 BG, BG2, SURF, FG, MUTED = "#1a1b26", "#16161e", "#24283b", "#c0caf5", "#565f89"
-PURPLE, PURPLE_DK = "#9b45ff", "#6f18e0"
+PURPLE, PURPLE_DK = "#7B4FD6", "#5a32b5"
 BLUE, GREEN, RED, YELLOW, CYAN = "#7aa2f7", "#9ece6a", "#f7768e", "#e0af68", "#7dcfff"
 
 ACCENTS = [
@@ -86,7 +86,7 @@ headerbar button { color: #c0caf5; border-radius: 8px; }
 
 .sidebar button.selected, .sidebar button.selected:hover, .sidebar button.selected:focus,
 .sidebar button.selected:active, .sidebar button.selected:checked, .sidebar button:checked {
-  background-image: none; background-color: #9B45FF; background: #9B45FF;
+  background-image: none; background-color: #7B4FD6; background: #7B4FD6;
   color: #ffffff; border: none; box-shadow: none; text-shadow: none;
 }
 .sidebar button.selected label, .sidebar button:checked label { color: #ffffff; }
@@ -95,26 +95,37 @@ headerbar button { color: #c0caf5; border-radius: 8px; }
 button.suggested-action, button.suggested-action:hover, button.suggested-action:focus,
 button.suggested-action:active, button.suggested-action:checked, button.suggested-action:backdrop,
 button.accent, button.accent:hover {
-  background-image: none; background-color: #9B45FF; background: #9B45FF;
+  background-image: none; background-color: #7B4FD6; background: #7B4FD6;
   color: #ffffff; border: none; border-image: none; box-shadow: none;
   text-shadow: none; -gtk-icon-shadow: none; outline: none;
   border-radius: 8px; padding: 8px 16px; font-weight: 600; min-height: 32px; }
-button.suggested-action:hover, button.accent:hover { background-color: #8b63e0; background: #8b63e0; background-image: none; }
+button.suggested-action:hover, button.accent:hover { background-color: #6d45c4; background: #6d45c4; background-image: none; }
 button.suggested-action:disabled { opacity: 0.55; }
 button.suggested-action label, button.accent label { color: #ffffff; background: none; }
 button.flat { background: none; border: none; box-shadow: none; color: #c0caf5; border-radius: 8px; }
 button.danger { background-image: none; background-color: #f7768e; color: #16161e;
   border-radius: 8px; border: none; padding: 8px 14px; }
 progressbar trough { min-height: 8px; border-radius: 8px; background-color: #16161e; border: none; }
-progressbar progress { min-height: 8px; border-radius: 8px; background-color: #9b45ff; }
+progressbar progress { min-height: 8px; border-radius: 8px; background-color: #7B4FD6; }
 entry { background-color: #16161e; color: #c0caf5; border: 1px solid rgba(155,69,255,0.30);
   border-radius: 8px; min-height: 28px; padding: 0 10px; }
-entry:focus { border-color: #9b45ff; }
-scale highlight { background-color: #9b45ff; }
+entry:focus { border-color: #7B4FD6; }
+scale highlight { background-color: #7B4FD6; }
 scale trough { background-color: #16161e; border-radius: 8px; min-height: 6px; }
-switch slider { background-color: #c0caf5; }
-switch { background-color: #414868; }
-switch:checked { background-color: #9b45ff; }
+switch {
+  background-color: #414868; background-image: none; border: none; box-shadow: none;
+  color: transparent; font-size: 0; min-width: 44px; min-height: 22px; padding: 2px;
+  border-radius: 999px; outline: none;
+}
+switch:hover { background-color: #4a5270; background-image: none; }
+switch:checked, switch:checked:hover, switch:checked:backdrop {
+  background-color: #7B4FD6; background-image: none; border: none; box-shadow: none; color: transparent;
+}
+switch slider {
+  background-color: #c0caf5; background-image: none; border: none; box-shadow: none;
+  min-width: 18px; min-height: 18px; margin: 1px; border-radius: 999px;
+}
+switch:checked slider { background-color: #ffffff; background-image: none; }
 label.muted { color: #565f89; }
 label.error { color: #f7768e; }
 label.ok { color: #9ece6a; }
@@ -159,20 +170,55 @@ label.signal { font-family: "JetBrains Mono", monospace; }
   background-color: #1a1b26; background-image: none;
 }
 .wifi-card { background-color: #24283b; border-radius: 12px; }
-button.wifi-item {
-  background: #1a1b26; background-color: #1a1b26; background-image: none; border: none; box-shadow: none;
-  border-radius: 10px; padding: 0; min-height: 0; outline: none; color: #c0caf5;
+button.wifi-item, button.wifi-item:hover, button.wifi-item:focus, button.wifi-item:active,
+button.wifi-item:checked, button.wifi-item:selected, button.wifi-item.active,
+button.wifi-item.active:hover, button.wifi-item.active:focus, button.wifi-item.active:checked,
+eventbox.wifi-item, eventbox.wifi-item:hover, eventbox.wifi-item:active, eventbox.wifi-item.active,
+eventbox.wifi-item.active:hover, .wifi-item, .wifi-item:hover, .wifi-item.active {
+  background: #1a1b26; background-color: #1a1b26; background-image: none;
+  border: none; border-image: none; box-shadow: none; outline: none;
+  border-radius: 10px; padding: 0; min-height: 0; color: #c0caf5;
 }
-button.wifi-item:hover { background: rgba(155,69,255,0.14); background-image: none; }
-button.wifi-item:active { background: rgba(155,69,255,0.22); background-image: none; }
-button.wifi-item.active { background: rgba(155,69,255,0.30); background-image: none; }
-button.wifi-item label { color: #c0caf5; background: none; }
+button.wifi-item:hover, eventbox.wifi-item:hover, .wifi-item:hover {
+  background: rgba(123,79,214,0.16); background-color: rgba(123,79,214,0.16); background-image: none;
+}
+button.wifi-item:active, eventbox.wifi-item:active {
+  background: rgba(123,79,214,0.22); background-color: rgba(123,79,214,0.22); background-image: none;
+}
+button.wifi-item.active, button.wifi-item.active:hover, button.wifi-item.active:focus,
+eventbox.wifi-item.active, eventbox.wifi-item.active:hover, .wifi-item.active {
+  background: transparent; background-color: transparent; background-image: none;
+  border: none; box-shadow: none; outline: none;
+}
+box.wifi-item-inner.active, box.wifi-item-inner.active:hover {
+  background: rgba(123,79,214,0.22); background-color: rgba(123,79,214,0.22); background-image: none;
+  border: none; box-shadow: none; outline: none;
+}
+button.wifi-item label, button.wifi-item.active label,
+eventbox.wifi-item label, eventbox.wifi-item.active label, .wifi-item label { color: #c0caf5; background: none; }
+eventbox.wifi-item {
+  background: transparent; background-color: transparent;
+  border: none; box-shadow: none; outline: none; padding: 0;
+}
+eventbox.wifi-item box, eventbox.wifi-item *, box.wifi-item-inner {
+  background-color: transparent; background-image: none;
+  border: none; box-shadow: none; outline: none;
+}
+box.wifi-item-inner {
+  border-radius: 10px;
+  padding: 0;
+}
+box.wifi-item-inner.active {
+  background-color: rgba(123,79,214,0.22);
+  background: rgba(123,79,214,0.22);
+  border: none; box-shadow: none; outline: none;
+}
 .wifi-pass { background-color: #24283b; border-radius: 12px; border: 1px solid rgba(155,69,255,0.40); }
 .wifi-header { color: #c0caf5; }
 #taskbar-preview, .taskbar-preview { background-color: #1a1b26; }
 .taskbar-top { background-color: #16161e; }
 .taskbar-dock { background-color: #16161e; border-radius: 16px; }
-button.suggested-action { background: #9B45FF; background-image: none; color: #ffffff; border: none; border-radius: 8px; min-height: 32px; }
+button.suggested-action { background: #7B4FD6; background-image: none; color: #ffffff; border: none; border-radius: 8px; min-height: 32px; }
 button.suggested-action:hover { background: #6A35D0; background-image: none; }
 switch { min-width: 42px; }
 switch {
@@ -180,7 +226,7 @@ switch {
 }
 switch:hover { background-color: #4a5270; background-image: none; }
 switch:checked, switch:checked:hover, switch:checked:backdrop, switch:checked:disabled {
-  background: #9B45FF; background-color: #9B45FF; background-image: none; border: none; box-shadow: none;
+  background: #7B4FD6; background-color: #7B4FD6; background-image: none; border: none; box-shadow: none;
 }
 switch slider { background-color: #c0caf5; background-image: none; border: none; box-shadow: none; min-width: 18px; min-height: 18px; }
 switch:checked slider { background-color: #ffffff; background-image: none; }
@@ -199,6 +245,18 @@ switch:checked slider { background-color: #ffffff; background-image: none; }
   color: #c0caf5;
 }
 .shortcut-row { border-radius: 8px; padding: 2px 0; }
+
+window, window.background, .background, decoration {
+  background-color: #1a1b26; background-image: none; color: #c0caf5;
+}
+scrolledwindow, scrolledwindow > viewport, viewport, viewport.frame,
+overshoot, overshoot.top, overshoot.bottom, overshoot.left, overshoot.right,
+undershoot, undershoot.top, undershoot.bottom, undershoot.left, undershoot.right,
+junction, frame, .frame {
+  background-color: #1a1b26; background-image: none;
+  border: none; box-shadow: none; outline: none;
+}
+.sidebar { background-color: #16161e; }
 """
 
 PROGRESS_PATTERNS = [
@@ -233,6 +291,50 @@ def appearance_path():
     return os.path.join(config_home(), "rukeos", "appearance.conf")
 
 
+def default_animations():
+    """On 512 MB machines default to reduced motion; otherwise on."""
+    try:
+        with open("/proc/meminfo", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    kb = int(line.split()[1])
+                    return "reduced" if kb < 768000 else "on"
+    except (OSError, ValueError, IndexError):
+        pass
+    return "reduced"
+
+
+def animations_enabled(level=None):
+    level = level or (load_appearance().get("animations") or default_animations())
+    return level in ("on", "reduced")
+
+
+def apply_compositor(d=None):
+    """Start, restart, or stop picom from the Animations setting."""
+    d = d or load_appearance()
+    level = d.get("animations") or default_animations()
+    helper = shutil.which("ruke-compositor") or "/usr/local/bin/ruke-compositor"
+    if os.path.isfile(helper):
+        run_cmd([helper, level], timeout=8)
+        return
+    # Fallback if the helper is not on PATH yet.
+    if level == "off":
+        run_cmd(["pkill", "-x", "picom"], timeout=3)
+        return
+    conf = os.path.expanduser("~/.config/picom/picom-%s.conf" % level)
+    if not os.path.isfile(conf):
+        conf = os.path.expanduser("~/.config/picom/picom.conf")
+    if shutil.which("picom") and os.environ.get("DISPLAY"):
+        run_cmd(["pkill", "-x", "picom"], timeout=3)
+        subprocess.Popen(
+            ["picom", "-b", "--config", conf],
+            start_new_session=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
 def load_appearance():
     d = {
         "wallpaper": WALLPAPER_DEFAULT,
@@ -240,6 +342,7 @@ def load_appearance():
         "theme": "dark",
         "font_size": "10",
         "night_light": "0",
+        "animations": default_animations(),
     }
     path = appearance_path()
     if os.path.isfile(path):
@@ -257,7 +360,7 @@ def save_appearance(d):
     path = appearance_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        for k in ("wallpaper", "accent", "theme", "font_size", "night_light"):
+        for k in ("wallpaper", "accent", "theme", "font_size", "night_light", "animations"):
             f.write("%s=%s\n" % (k, d.get(k, "")))
 
 
@@ -307,13 +410,13 @@ def _force_accent_button(btn):
     css = Gtk.CssProvider()
     css.load_from_data(b"""
         button, button:hover, button:focus, button:active, button:checked, button:backdrop {
-          background-image: none; background-color: #9B45FF; background: #9B45FF;
+          background-image: none; background-color: #7B4FD6; background: #7B4FD6;
           color: #ffffff; border: none; border-image: none; box-shadow: none;
           text-shadow: none; -gtk-icon-shadow: none; outline: none;
           border-radius: 8px; min-height: 32px; padding: 8px 16px; }
         button label { color: #ffffff; background: none; }
     """)
-    btn.get_style_context().add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+    btn.get_style_context().add_provider(css, 800)
 
 def apply_css(widget=None):
     try:
@@ -322,7 +425,7 @@ def apply_css(widget=None):
         screen = Gdk.Screen.get_default()
         if screen:
             Gtk.StyleContext.add_provider_for_screen(
-                screen, p, Gtk.STYLE_PROVIDER_PRIORITY_USER
+                screen, p, 800
             )
         elif widget:
             widget.get_style_context().add_provider(p, Gtk.STYLE_PROVIDER_PRIORITY_USER)
@@ -550,7 +653,7 @@ def set_pcmanfm_desktop(wallpaper=None, theme=None, font_size=None):
         "desktop_font": "Inter %s" % fs,
         "show_documents": "0",
         "show_trash": "0",
-        "show_mounts": "0",
+        "show_mounts": "1",
     }
     if wallpaper:
         mapping["wallpaper"] = wallpaper
@@ -623,6 +726,7 @@ def apply_appearance(d, session_only=False):
     font_size = str(d.get("font_size") or "10")
     set_wallpaper(wallpaper, theme=theme, font_size=font_size)
     set_night_light(d.get("night_light") == "1")
+    apply_compositor(d)
     if session_only:
         return
     home = _home()
@@ -1108,7 +1212,7 @@ class SettingsWindow(Gtk.Window):
         if page == "apps" and screenshot:
             self.set_default_size(760, 1000)
         elif page == "shortcuts" and screenshot:
-            self.set_default_size(760, 920)
+            self.set_default_size(760, 1200)
         elif page == "shortcuts":
             self.set_default_size(760, 640)
         else:
@@ -1141,7 +1245,11 @@ class SettingsWindow(Gtk.Window):
         self.stack = Gtk.Stack()
         self.stack.set_hexpand(True)
         self.stack.set_vexpand(True)
-        self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        if animations_enabled(self.appearance.get("animations")):
+            self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+            self.stack.set_transition_duration(160 if (self.appearance.get("animations") == "on") else 80)
+        else:
+            self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
         self.nav = {}
         for key, label in (("updates", "Updates"), ("customization", "Customization"), ("security", "Security"), ("shortcuts", "Shortcuts"), ("apps", "Apps"), ("help", "Help")):
             b = Gtk.Button(label=label)
@@ -1155,7 +1263,12 @@ class SettingsWindow(Gtk.Window):
         outer.pack_start(side, False, False, 0)
         sc = Gtk.ScrolledWindow()
         sc.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        sc.set_shadow_type(Gtk.ShadowType.NONE)
+        sc.set_hexpand(True)
+        sc.set_vexpand(True)
+        sc.get_style_context().add_class("ruke-scrolled")
         pad = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        pad.get_style_context().add_class("ruke-pane")
         pad.set_margin_start(18)
         pad.set_margin_end(18)
         pad.set_margin_top(16)
@@ -1430,6 +1543,19 @@ class SettingsWindow(Gtk.Window):
         self.font_spin.connect("value-changed", self._font_changed)
         frow.pack_start(self.font_spin, False, False, 0)
         inner.pack_start(frow, False, False, 0)
+        arow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        arow.pack_start(Gtk.Label(label="Animations", xalign=0), False, False, 0)
+        self.anim_combo = Gtk.ComboBoxText()
+        for key, label in (("on", "On"), ("reduced", "Reduced"), ("off", "Off")):
+            self.anim_combo.append(key, label)
+        cur = self.appearance.get("animations") or default_animations()
+        if cur not in ("on", "reduced", "off"):
+            cur = default_animations()
+        self.anim_combo.set_active_id(cur)
+        self.anim_combo.connect("changed", self._animations_changed)
+        arow.pack_start(self.anim_combo, False, False, 0)
+        inner.pack_start(arow, False, False, 0)
+        inner.pack_start(muted("On: short window open/close/minimize fades and the dock zoom. Reduced: lighter fades, no zoom. Off: no compositor (best on 512 MB if things stutter)."), False, False, 0)
         box.pack_start(fr, False, False, 0)
         return box
 
@@ -1487,6 +1613,16 @@ class SettingsWindow(Gtk.Window):
     def _font_changed(self, *_):
         self.appearance["font_size"] = str(int(self.font_spin.get_value()))
         self._commit_appearance()
+
+    def _animations_changed(self, *_):
+        key = self.anim_combo.get_active_id() or default_animations()
+        self.appearance["animations"] = key
+        self._commit_appearance()
+        if animations_enabled(key):
+            self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+            self.stack.set_transition_duration(160 if key == "on" else 80)
+        else:
+            self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
 
     def _build_security(self):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
@@ -1553,9 +1689,12 @@ class SettingsWindow(Gtk.Window):
         note.set_line_wrap(True)
         note.get_style_context().add_class("muted")
         note.set_markup(
+            "This password is stored in the system account file and is flushed to the save partition, "
+            "so it is what the lock screen and a console login will ask for after a reboot. "
+            "sudo does not ask for a password on this computer.\n"
             "While the lock screen is up, switching to another console (Ctrl+Alt+F2…) is blocked.\n"
-            "After you unlock, other consoles still ask for a password. The live image also has a "
-            "<b>root</b> account with a default password — run <tt>sudo passwd root</tt> if others can reach a console."
+            "The live image also has a <b>root</b> account with a default password — run "
+            "<tt>sudo passwd root</tt> if others can reach a console."
         )
         box.pack_start(note, False, False, 0)
         self._refresh_security()
@@ -1676,7 +1815,10 @@ class SettingsWindow(Gtk.Window):
         box.pack_start(
             muted(
                 "Default shortcuts are listed below. Add your own, or edit a combination. "
-                "Changes are saved for your account and applied to the desktop right away."
+                "Changes are saved for your account and applied to the desktop right away. "
+                "Copy, Cut, Paste, Select all, and Undo are listed for reference: apps handle "
+                "them (including the text editor), and they are not bound globally. In the "
+                "terminal, use Ctrl+Shift+C and Ctrl+Shift+V."
             ),
             False,
             False,
@@ -1736,7 +1878,16 @@ class SettingsWindow(Gtk.Window):
                 sub.get_style_context().add_class("muted")
                 sub.set_ellipsize(Pango.EllipsizeMode.END)
                 col.pack_start(sub, False, False, 0)
+        if entry.get("informational") or entry.get("kind") == "info" or entry.get("note"):
+            note = entry.get("note") or "Handled by the app you are in."
+            sub = Gtk.Label(label=note, xalign=0)
+            sub.get_style_context().add_class("muted")
+            sub.set_line_wrap(True)
+            sub.set_xalign(0)
+            col.pack_start(sub, False, False, 0)
         row.pack_start(col, True, True, 0)
+        if entry.get("informational") or entry.get("kind") == "info":
+            return row
         edit = Gtk.Button(label="Edit")
         edit.set_relief(Gtk.ReliefStyle.NONE)
         edit.connect("clicked", self._on_edit_shortcut, entry, custom)
@@ -2004,9 +2155,17 @@ class SettingsWindow(Gtk.Window):
     def _on_linux_app(self, _btn, app_id):
         if ruke_linuxapps is None:
             return
+        if getattr(self, "_apk_job_busy", False):
+            self.linux_apps_status.set_text("Waiting for another install to finish…")
+            return
         app = ruke_linuxapps.app_by_id(app_id)
         if not app:
             return
+        self._apk_job_busy = True
+        for row in (self._linux_rows or {}).values():
+            b = row.get("button")
+            if b:
+                b.set_sensitive(False)
         row = self._linux_rows.get(app_id) or {}
         btn = row.get("button")
         bar = row.get("progress")
@@ -2036,6 +2195,7 @@ class SettingsWindow(Gtk.Window):
                 rc, msg = ruke_linuxapps.remove_app(app, progress=progress)
 
             def done():
+                self._apk_job_busy = False
                 if bar:
                     bar.set_fraction(1 if rc == 0 else 0)
                     bar.hide()
@@ -2068,6 +2228,10 @@ class SettingsWindow(Gtk.Window):
     def _on_install_wine(self, _btn):
         if ruke_winapps is None:
             return
+        if getattr(self, "_apk_job_busy", False):
+            self.winapps_status.set_text("Waiting for another install to finish…")
+            return
+        self._apk_job_busy = True
         self.winapps_wine_btn.set_sensitive(False)
         self.winapps_spin.show(); self.winapps_spin.start()
         self.winapps_status.set_text("Installing Wine… this can take a few minutes.")
@@ -2075,6 +2239,7 @@ class SettingsWindow(Gtk.Window):
         def work():
             rc, msg = ruke_winapps.install_wine()
             def done():
+                self._apk_job_busy = False
                 self.winapps_spin.stop()
                 self.winapps_status.set_text(msg)
                 self._refresh_winapps_status()
@@ -2245,7 +2410,7 @@ class SignalBars(Gtk.DrawingArea):
         cr.set_source_rgba(0, 0, 0, 0)
         cr.paint()
         if self.active:
-            on = (0.608, 0.271, 1.0, 1)  # #9B45FF
+            on = (0.482, 0.310, 0.839, 1)  # #7B4FD6
         else:
             on = (0.753, 0.792, 0.961, 1)  # #c0caf5
         off = (0.337, 0.373, 0.537, 0.40)
@@ -2277,7 +2442,7 @@ class LockMark(Gtk.DrawingArea):
 
     def _draw(self, _w, cr):
         if self.active:
-            cr.set_source_rgba(0.608, 0.271, 1.0, 1)
+            cr.set_source_rgba(0.482, 0.310, 0.839, 1)
         else:
             cr.set_source_rgba(0.337, 0.373, 0.537, 1)
         # shackle
@@ -2300,6 +2465,7 @@ class WifiList(Gtk.Box):
         self.list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         sc = Gtk.ScrolledWindow()
         sc.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        sc.set_shadow_type(Gtk.ShadowType.NONE)
         sc.set_min_content_height(48)
         sc.set_max_content_height(280 if not compact else 180)
         sc.set_propagate_natural_height(True)
@@ -2361,12 +2527,21 @@ class WifiList(Gtk.Box):
         return False
 
     def _row(self, n):
-        row = Gtk.Button()
-        row.set_relief(Gtk.ReliefStyle.NONE)
+        # EventBox (not Gtk.Button): Buttons kept a thick purple/pink outline
+        # on the connected row even with border:none in CSS.
+        row = Gtk.EventBox()
+        row.set_can_focus(False)
+        try:
+            row.set_visible_window(True)
+        except Exception:
+            pass
         row.get_style_context().add_class("wifi-item")
         if n.get("active"):
             row.get_style_context().add_class("active")
         hb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        hb.get_style_context().add_class("wifi-item-inner")
+        if n.get("active"):
+            hb.get_style_context().add_class("active")
         hb.set_margin_start(8)
         hb.set_margin_end(8)
         hb.set_margin_top(7)
@@ -2384,10 +2559,10 @@ class WifiList(Gtk.Box):
             hb.pack_start(LockMark(n.get("active")), False, False, 0)
         if n.get("active"):
             tick = Gtk.Label()
-            tick.set_markup('<span foreground="#9B45FF"><b>✓</b></span>')
+            tick.set_markup('<span foreground="#7B4FD6"><b>✓</b></span>')
             hb.pack_start(tick, False, False, 0)
         row.add(hb)
-        row.connect("clicked", self._clicked, n)
+        row.connect("button-press-event", self._wifi_row_press, n)
         return row
 
     def show_password(self, ssid):
@@ -2406,6 +2581,15 @@ class WifiList(Gtk.Box):
         self.pw_box.hide()
         self.pw_box.set_no_show_all(True)
         self._ssid_for_password = None
+
+    def _wifi_row_press(self, _w, event, n):
+        try:
+            if event.button != 1:
+                return False
+        except Exception:
+            pass
+        self._clicked(_w, n)
+        return True
 
     def _clicked(self, _w, n):
         if n.get("active"):
@@ -2941,7 +3125,7 @@ def folder_pixbuf(size=48):
     cr.line_to(3, 17)
     cr.curve_to(3, 15, 4, 14, 6, 14)
     cr.close_path()
-    cr.set_source_rgb(0.608, 0.271, 1.0)  # #9B45FF
+    cr.set_source_rgb(0.482, 0.310, 0.839)  # #7B4FD6
     cr.fill()
     # slight highlight
     cr.rectangle(5, 16, 38, 6)
@@ -2983,7 +3167,7 @@ class LockPreview(Gtk.Window):
         radius = 110
         # ring
         cr.set_line_width(8)
-        cr.set_source_rgb(0.608, 0.271, 1.0)  # #9B45FF
+        cr.set_source_rgb(0.482, 0.310, 0.839)  # #7B4FD6
         cr.arc(cx, cy, radius, 0, 6.2832)
         cr.stroke()
         cr.set_source_rgba(0.102, 0.106, 0.149, 0.85)
@@ -3709,10 +3893,10 @@ def play_with_mpv(files):
         return 1
 
 
-def media_picker(kind, files=None):
+def media_picker(kind, files=None, screenshot=None):
     """Open a file picker (Video or Music) then play the choice in mpv. If files are given, skip the picker."""
     given = [f for f in (files or []) if f and os.path.exists(f)]
-    if given:
+    if given and not screenshot:
         return play_with_mpv(given)
     apply_css()
     home = os.path.expanduser("~")
@@ -3747,6 +3931,14 @@ def media_picker(kind, files=None):
     allf.set_name("All files")
     allf.add_pattern("*")
     dlg.add_filter(allf)
+    if screenshot:
+        maybe_screenshot(dlg, screenshot)
+        Gtk.main()
+        try:
+            dlg.destroy()
+        except Exception:
+            pass
+        return 0
     resp = dlg.run()
     chosen = dlg.get_filenames() if resp == Gtk.ResponseType.OK else []
     dlg.destroy()
@@ -3860,6 +4052,7 @@ def main(argv=None):
     p.add_argument("--preview-files", action="store_true", help="render a Files (PCManFM) theme preview and exit")
     p.add_argument("--usb", action="store_true", help="include a USB drive in the Files preview")
     p.add_argument("--preview-notification", action="store_true", help="render a notification popup preview and exit")
+    p.add_argument("--preview-filechooser", choices=("music", "video"), help="render an Open music/video file dialog preview and exit")
     p.add_argument("--add-shortcut", action="store_true", help="pick an app and add a shortcut to the desktop")
     p.add_argument("--prompt-password", action="store_true", help="open Security and ask to set a password if none is set")
     p.add_argument("--tray", action="store_true", help="Wi-Fi indicator for the top bar")
@@ -3880,6 +4073,9 @@ def main(argv=None):
         return 0
     if args.play:
         return media_picker(args.play, args.files)
+    if args.preview_filechooser:
+        load_css_and_display()
+        return media_picker(args.preview_filechooser, screenshot=args.screenshot)
 
     load_css_and_display()
 

@@ -1,0 +1,429 @@
+#!/usr/bin/python3
+"""Lightweight rukeOS dock with optional macOS-style hover magnification."""
+from __future__ import annotations
+
+import argparse
+import os
+import signal
+import subprocess
+import sys
+
+os.environ.setdefault("NO_AT_BRIDGE", "1")
+os.environ.setdefault("GTK_A11Y", "none")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gtk, Gdk, GLib, GdkPixbuf
+
+try:
+    import cairo
+except ImportError:
+    cairo = None
+
+SHARE = "/usr/share/rukeos"
+ICON_DIR = os.environ.get("RUKE_ICON_DIR", os.path.join(SHARE, "icons"))
+BG = (0.09, 0.09, 0.12, 0.92)       # #16161e
+BORDER = (0.48, 0.31, 0.84, 0.45)  # #7B4FD6
+BASE = 42
+PAD = 10
+GAP = 8
+HOVER = 1.50
+NEIGHBOR = 1.25
+
+ITEMS = [
+    ("terminal", "Terminal", "xterm"),
+    ("files", "Files", "pcmanfm"),
+    ("browser", "Web Browser", "ruke-browser"),
+    ("text-editor", "Text Editor", "mousepad"),
+    ("video", "Video", "ruke-video"),
+    ("music", "Music", "ruke-music"),
+    ("settings", "Settings", "ruke-settings"),
+    ("network", "Wi-Fi", "ruke-wifi"),
+    ("task-manager", "Task Manager", "xterm -T Tasks -e htop"),
+    ("volume", "Volume", "xterm -T Volume -e alsamixer"),
+]
+
+
+def load_appearance():
+    d = {"animations": "reduced"}
+    path = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "rukeos", "appearance.conf")
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                d[k.strip()] = v.strip()
+    except OSError:
+        pass
+    if "animations" not in d or d["animations"] not in ("on", "reduced", "off"):
+        try:
+            with open("/proc/meminfo", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        d["animations"] = "reduced" if int(line.split()[1]) < 768000 else "on"
+                        break
+        except (OSError, ValueError):
+            d["animations"] = "reduced"
+    return d
+
+
+def load_icon(name, size=128):
+    for p in (
+        os.path.join(ICON_DIR, "%s.png" % name),
+        os.path.join(ICON_DIR, "%s.svg" % name),
+        "/usr/share/icons/hicolor/48x48/apps/ruke-%s.png" % name,
+    ):
+        if p and os.path.isfile(p):
+            try:
+                return GdkPixbuf.Pixbuf.new_from_file_at_size(p, size, size)
+            except Exception:
+                continue
+    return None
+
+
+def pid_path():
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    os.makedirs(runtime, exist_ok=True)
+    return os.path.join(runtime, "ruke-dock.pid")
+
+
+class Dock(Gtk.Window):
+    def __init__(self, screenshot=None, magnify=None):
+        Gtk.Window.__init__(self, title="rukeOS dock")
+        self.set_name("ruke-dock")
+        try:
+            GLib.set_prgname("RukeDock")
+            self.set_wmclass("RukeDock", "RukeDock")
+        except Exception:
+            pass
+        self.set_decorated(False)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        if screenshot:
+            self.set_type_hint(Gdk.WindowTypeHint.NORMAL)
+        else:
+            self.set_type_hint(Gdk.WindowTypeHint.DOCK)
+        self.set_keep_above(True)
+        self.set_app_paintable(True)
+        self.set_resizable(False)
+        self.connect("destroy", Gtk.main_quit)
+        self.connect("draw", self._draw)
+        self.add_events(
+            Gdk.EventMask.POINTER_MOTION_MASK
+            | Gdk.EventMask.LEAVE_NOTIFY_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.ENTER_NOTIFY_MASK
+        )
+        self.connect("motion-notify-event", self._motion)
+        self.connect("leave-notify-event", self._leave)
+        self.connect("button-press-event", self._click)
+
+        self.items = []
+        for name, label, cmd in ITEMS:
+            self.items.append({"name": name, "label": label, "cmd": cmd, "pixbuf": load_icon(name, 96), "scale": 1.0, "target": 1.0})
+
+        self.anim = (load_appearance().get("animations") or "reduced") == "on"
+        if magnify is not None:
+            self.anim = True
+        self.hover = -1
+        if magnify is not None and 0 <= magnify < len(self.items):
+            self.hover = magnify
+            self._set_targets(magnify)
+            for it, s in zip(self.items, self._targets(magnify)):
+                it["scale"] = s
+        self.screenshot = screenshot
+        self._tick_id = None
+
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual:
+            self.set_visual(visual)
+
+        self._resize_to_content()
+        self.show_all()
+        if screenshot:
+            GLib.idle_add(self._place_preview)
+            GLib.timeout_add(800, self._shot)
+        else:
+            GLib.idle_add(self._place)
+
+    def _targets(self, index):
+        out = []
+        for i in range(len(self.items)):
+            if not self.anim or index < 0:
+                out.append(1.0)
+            elif i == index:
+                out.append(HOVER)
+            elif abs(i - index) == 1:
+                out.append(NEIGHBOR)
+            else:
+                out.append(1.0)
+        return out
+
+    def _set_targets(self, index):
+        for it, s in zip(self.items, self._targets(index)):
+            it["target"] = s
+
+    def _max_scale(self):
+        return max(it["scale"] for it in self.items) if self.items else 1.0
+
+    def _width_height(self):
+        scales = [it["scale"] for it in self.items]
+        width = int(PAD * 2 + GAP * (len(scales) - 1) + BASE * sum(scales))
+        height = int(PAD * 2 + BASE * max(scales) + 6)
+        return max(width, 80), max(height, 40)
+
+    def _resize_to_content(self):
+        w, h = self._width_height()
+        self.set_size_request(w, h)
+        self.resize(w, h)
+
+    def _place(self):
+        self._resize_to_content()
+        screen = self.get_screen()
+        mon = screen.get_monitor_geometry(screen.get_primary_monitor() if hasattr(screen, "get_primary_monitor") else 0)
+        w, h = self.get_size()
+        x = mon.x + (mon.width - w) // 2
+        y = mon.y + mon.height - h - 8
+        self.move(x, y)
+        self._strut(mon, h)
+        return False
+
+    def _place_preview(self):
+        """Center the dock on the screen so a screenshot is not clipped."""
+        self._resize_to_content()
+        screen = self.get_screen()
+        mon = screen.get_monitor_geometry(screen.get_primary_monitor() if hasattr(screen, "get_primary_monitor") else 0)
+        w, h = self.get_size()
+        self.move(mon.x + (mon.width - w) // 2, mon.y + (mon.height - h) // 2)
+        self.queue_draw()
+        return False
+
+    def _strut(self, mon, h):
+        try:
+            gdk_win = self.get_window()
+            if gdk_win is None:
+                return
+            # _NET_WM_STRUT_PARTIAL: left, right, top, bottom, then start/end for each
+            bottom = h + 8
+            width = mon.width
+            strut = [0, 0, 0, bottom, 0, 0, 0, 0, 0, 0, mon.x, mon.x + width]
+            gdk_win.property_change(
+                Gdk.Atom.intern("_NET_WM_STRUT_PARTIAL", False),
+                Gdk.Atom.intern("CARDINAL", False),
+                32,
+                Gdk.PropMode.REPLACE,
+                strut,
+                12,
+            )
+            gdk_win.property_change(
+                Gdk.Atom.intern("_NET_WM_STRUT", False),
+                Gdk.Atom.intern("CARDINAL", False),
+                32,
+                Gdk.PropMode.REPLACE,
+                [0, 0, 0, bottom],
+                4,
+            )
+        except Exception:
+            pass
+
+    def _index_at(self, x):
+        cursor = PAD
+        for i, it in enumerate(self.items):
+            w = BASE * it["scale"]
+            if cursor - GAP / 2 <= x <= cursor + w + GAP / 2:
+                return i
+            cursor += w + GAP
+        return -1
+
+    def _motion(self, _w, ev):
+        idx = self._index_at(ev.x)
+        if idx != self.hover:
+            self.hover = idx
+            self._set_targets(idx)
+            self._ensure_tick()
+            if 0 <= idx < len(self.items):
+                self.set_tooltip_text(self.items[idx]["label"])
+            else:
+                self.set_tooltip_text(None)
+        return True
+
+    def _leave(self, _w, ev):
+        # Ignore when the pointer moves into a child / tooltip
+        if ev.detail == Gdk.NotifyType.INFERIOR:
+            return False
+        self.hover = -1
+        self._set_targets(-1)
+        self.set_tooltip_text(None)
+        self._ensure_tick()
+        return False
+
+    def _click(self, _w, ev):
+        if ev.button != 1:
+            return False
+        idx = self._index_at(ev.x)
+        if idx < 0:
+            return False
+        cmd = self.items[idx]["cmd"]
+        try:
+            subprocess.Popen(cmd, shell=True, start_new_session=True)
+        except OSError:
+            pass
+        return True
+
+    def _ensure_tick(self):
+        if self._tick_id:
+            return
+        self._tick_id = GLib.timeout_add(16, self._tick)
+
+    def _tick(self):
+        changed = False
+        for it in self.items:
+            s, tgt = it["scale"], it["target"]
+            if abs(s - tgt) < 0.01:
+                if s != tgt:
+                    it["scale"] = tgt
+                    changed = True
+                continue
+            it["scale"] = s + (tgt - s) * 0.32
+            changed = True
+        if changed:
+            self._resize_to_content()
+            self._place()
+            self.queue_draw()
+            return True
+        self._tick_id = None
+        return False
+
+    def _draw(self, _w, cr):
+        w, h = self.get_allocated_width(), self.get_allocated_height()
+        # Clear with SOURCE, then draw the panel and icons with OVER so later
+        # icons do not wipe earlier ones (paint() with SOURCE replaces the whole surface).
+        if cairo:
+            cr.set_operator(cairo.OPERATOR_SOURCE)
+        cr.set_source_rgba(0, 0, 0, 0)
+        cr.paint()
+        if cairo:
+            cr.set_operator(cairo.OPERATOR_OVER)
+        # rounded panel
+        r = 16
+        cr.set_source_rgba(*BG)
+        cr.new_path()
+        cr.move_to(r, 0)
+        cr.line_to(w - r, 0)
+        cr.curve_to(w, 0, w, 0, w, r)
+        cr.line_to(w, h - r)
+        cr.curve_to(w, h, w, h, w - r, h)
+        cr.line_to(r, h)
+        cr.curve_to(0, h, 0, h, 0, h - r)
+        cr.line_to(0, r)
+        cr.curve_to(0, 0, 0, 0, r, 0)
+        cr.close_path()
+        cr.fill()
+        cr.set_source_rgba(*BORDER)
+        cr.set_line_width(1.2)
+        cr.new_path()
+        cr.move_to(r, 0.6)
+        cr.line_to(w - r, 0.6)
+        cr.curve_to(w - 0.6, 0.6, w - 0.6, 0.6, w - 0.6, r)
+        cr.line_to(w - 0.6, h - r)
+        cr.curve_to(w - 0.6, h - 0.6, w - 0.6, h - 0.6, w - r, h - 0.6)
+        cr.line_to(r, h - 0.6)
+        cr.curve_to(0.6, h - 0.6, 0.6, h - 0.6, 0.6, h - r)
+        cr.line_to(0.6, r)
+        cr.curve_to(0.6, 0.6, 0.6, 0.6, r, 0.6)
+        cr.stroke()
+
+        x = PAD
+        max_s = max(it["scale"] for it in self.items)
+        for it in self.items:
+            s = it["scale"]
+            size = int(BASE * s)
+            y = int(h - PAD - size)
+            pb = it["pixbuf"]
+            if pb:
+                scaled = pb.scale_simple(size, size, GdkPixbuf.InterpType.BILINEAR)
+                Gdk.cairo_set_source_pixbuf(cr, scaled, x, y)
+                cr.paint()
+            else:
+                cr.set_source_rgb(0.20, 0.21, 0.32)
+                radius = max(6, size * 0.18)
+                cr.new_path()
+                cr.arc(x + size - radius, y + radius, radius, -1.5708, 0)
+                cr.arc(x + size - radius, y + size - radius, radius, 0, 1.5708)
+                cr.arc(x + radius, y + size - radius, radius, 1.5708, 3.1416)
+                cr.arc(x + radius, y + radius, radius, 3.1416, 4.7124)
+                cr.close_path()
+                cr.fill()
+            x += size + GAP
+        return True
+
+    def _shot(self):
+        path = self.screenshot
+        try:
+            gdk_win = self.get_window()
+            if gdk_win is not None:
+                pb = Gdk.pixbuf_get_from_window(gdk_win, 0, 0, gdk_win.get_width(), gdk_win.get_height())
+                if pb:
+                    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+                    # Composite onto a Tokyo Night backdrop so the rounded dock is visible
+                    w, h = pb.get_width() + 80, pb.get_height() + 80
+                    surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, w, h)
+                    cr = cairo.Context(surf)
+                    cr.set_source_rgb(0x1a / 255, 0x1b / 255, 0x26 / 255)
+                    cr.paint()
+                    Gdk.cairo_set_source_pixbuf(cr, pb, 40, 40)
+                    cr.paint()
+                    # write via pixbuf
+                    out = Gdk.pixbuf_get_from_surface(surf, 0, 0, w, h)
+                    if out:
+                        out.savev(path, "png", [], [])
+                    else:
+                        pb.savev(path, "png", [], [])
+        finally:
+            Gtk.main_quit()
+        return False
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="ruke-dock")
+    p.add_argument("--screenshot", metavar="PATH")
+    p.add_argument("--magnify", type=int, default=None, help="preview: hover this icon index (0-based)")
+    p.add_argument("--replace", action="store_true", help="replace a running dock")
+    args = p.parse_args(argv)
+    path = pid_path()
+    if not args.screenshot:
+        try:
+            with open(path) as f:
+                pid = int(f.read().strip() or "0")
+            if pid and pid != os.getpid():
+                os.kill(pid, 0)
+                if args.replace:
+                    os.kill(pid, signal.SIGTERM)
+                else:
+                    return 0
+        except (OSError, ValueError):
+            pass
+        with open(path, "w") as f:
+            f.write(str(os.getpid()))
+
+        def cleanup(*_):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            Gtk.main_quit()
+
+        signal.signal(signal.SIGTERM, cleanup)
+        signal.signal(signal.SIGINT, cleanup)
+    Dock(screenshot=args.screenshot, magnify=args.magnify)
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

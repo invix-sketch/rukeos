@@ -101,6 +101,46 @@ DEFAULTS = [
         "command": "ruke-clipboard --popup",
     },
     {
+        "id": "copy",
+        "label": "Copy",
+        "keys": "Ctrl+C",
+        "kind": "info",
+        "command": "",
+        "note": "Handled by the app you are in. In the terminal, use Ctrl+Shift+C.",
+    },
+    {
+        "id": "cut",
+        "label": "Cut",
+        "keys": "Ctrl+X",
+        "kind": "info",
+        "command": "",
+        "note": "Handled by the app you are in.",
+    },
+    {
+        "id": "paste",
+        "label": "Paste",
+        "keys": "Ctrl+V",
+        "kind": "info",
+        "command": "",
+        "note": "Handled by the app you are in. In the terminal, use Ctrl+Shift+V.",
+    },
+    {
+        "id": "select-all",
+        "label": "Select all",
+        "keys": "Ctrl+A",
+        "kind": "info",
+        "command": "",
+        "note": "Handled by the app you are in, including the text editor (Mousepad).",
+    },
+    {
+        "id": "undo",
+        "label": "Undo",
+        "keys": "Ctrl+Z",
+        "kind": "info",
+        "command": "",
+        "note": "Handled by the app you are in.",
+    },
+    {
         "id": "maximize",
         "label": "Maximize window",
         "keys": "Super+Up",
@@ -319,10 +359,11 @@ def resolved_entries(config=None):
     overrides = cfg.get("overrides") or {}
     out = []
     for d in DEFAULTS:
-        if d["id"] in disabled:
+        if d["id"] in disabled and d.get("kind") != "info":
             item = dict(d)
             item["enabled"] = False
             item["builtin"] = True
+            item["informational"] = False
             item["command"] = expand_command(item.get("command") or "")
             item["keys"] = normalize_keys(item["keys"])
             out.append(item)
@@ -338,7 +379,15 @@ def resolved_entries(config=None):
         item["command"] = expand_command(item.get("command") or "")
         item["enabled"] = True
         item["builtin"] = True
-        item["overridden"] = bool(ov)
+        item["informational"] = item.get("kind") == "info"
+        item["overridden"] = bool(ov) and not item["informational"]
+        if item.get("note"):
+            item["note"] = item.get("note")
+        # Never let a user override rebind an informational (app-handled) shortcut.
+        if item["informational"]:
+            item["keys"] = normalize_keys(d["keys"])
+            item["command"] = ""
+            item["enabled"] = True
         out.append(item)
     for c in cfg.get("custom") or []:
         kid = str(c.get("id") or "").strip() or ("c-" + uuid.uuid4().hex[:8])
@@ -382,6 +431,9 @@ def write_keys_xml(entries=None, path=None):
     seen = set()
     for e in entries:
         if not e.get("enabled", True):
+            continue
+        # App-handled shortcuts must never become global JWM grabs.
+        if e.get("kind") == "info" or e.get("informational"):
             continue
         mask, key = to_jwm(e.get("keys"))
         if not key:
@@ -485,6 +537,8 @@ def ensure_shortcuts():
         missing = False
         for e in entries:
             if not e.get("enabled", True):
+                continue
+            if e.get("kind") == "info" or e.get("informational"):
                 continue
             mask, key = to_jwm(e.get("keys"))
             if not key:

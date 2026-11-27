@@ -1,5 +1,17 @@
 # rukeOS changelog
 
+## 0.4.5
+- Dark theme actually covers Files, GTK file choosers (Open music and Open video), and other GTK3/GTK2 apps: rukeOS-dark now ships Adwaita-dark as a local file (no resource:// import) and paints Tokyo Night over it. The Places sidebar, icon view, path bar, and dialog chrome stay dark.
+- Settings: the Check for updates and Install buttons use the theme purple (not a bright pink), the selected sidebar item stays readable, and the black inner frame / white strip at the bottom of the window are gone. Wi-Fi list rows no longer have a thick purple outline, and the Wi-Fi / Night light switches are a proper pill with a knob.
+- App store: Install and Remove wait for the apk lock (retry with backoff, up to about two minutes, with “Waiting for another install to finish…”) and only one apk job runs at a time. ruke-update also waits instead of colliding with an App store install.
+- Animations across the desktop, with a Settings → Customization → Animations control (On, Reduced, Off). Default is Reduced on machines with under 768 MB of RAM. On uses short open/close/minimize fades and dock zoom; Reduced is fades only; Off stops the compositor.
+- Bottom dock is now ruke-dock: same apps as before, with a macOS-style hover zoom (the icon under the pointer grows most, neighbors a little) when Animations is On.
+- Migration 0009 applies the theme, dock, and compositor setting to existing installs.
+- One-time migration 0010 resets the desktop user's password (judah, or the uid-1000 account) to <tt>rukeos</tt>, which is also the default on a fresh image, and flushes it to the save partition. The lock screen and console login use this same password. sudo stays passwordless so Settings and updates keep working.
+- Settings → Security password changes now fsync /etc/shadow and the rukeos-data volume so a new password survives reboot. The lock screen has an explicit PAM config that uses the same unix password as login. The previous change path could report success, then lose the new hash on reboot because the overlay write was still in the page cache.
+- Settings → Shortcuts lists Copy (Ctrl+C), Cut (Ctrl+X), Paste (Ctrl+V), Select all (Ctrl+A), and Undo (Ctrl+Z) as built-in, read-only entries. They are handled by apps (the default text editor is Mousepad) and are not bound globally in JWM, so they cannot steal input from the editor or the terminal. The terminal still uses Ctrl+Shift+C and Ctrl+Shift+V.
+- Ctrl+A (Select all) in Mousepad: JWM was not grabbing it. rukeOS now pins the GTK key theme to Default (not Emacs, which maps Ctrl+A to “start of line”) and adds the usual text-view key bindings so Ctrl+A/C/X/V work in the text editor and other GTK apps.
+
 ## 0.4.4
 - Fix the 0.4.3 theme not applying over OTA: rukeOS-dark no longer @imports Adwaita-dark (a failed import made GTK discard the whole theme and fall back to a white/light Adwaita). Existing sticks get user and system theme settings rewritten by a migration, including xsettingsd.
 - Settings: the selected sidebar item and the Check for updates button stay purple with white text, even if the system theme falls back.

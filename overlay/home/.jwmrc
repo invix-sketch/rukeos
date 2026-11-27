@@ -35,20 +35,8 @@
     <Spacer width="10"/>
   </Tray>
 
-  <Tray x="0" y="-10" halign="center" height="58" autohide="off" layer="above">
-    <Spacer width="8"/>
-    <TrayButton popup="Terminal" icon="utilities-terminal">exec:xterm</TrayButton>
-    <TrayButton popup="Files" icon="system-file-manager">exec:pcmanfm</TrayButton>
-    <TrayButton popup="Web Browser" icon="web-browser">exec:ruke-browser</TrayButton>
-    <TrayButton popup="Text Editor" icon="accessories-text-editor">exec:mousepad</TrayButton>
-    <TrayButton popup="Video" icon="ruke-video">exec:ruke-video</TrayButton>
-    <TrayButton popup="Music" icon="ruke-music">exec:ruke-music</TrayButton>
-    <TrayButton popup="Settings" icon="ruke-settings">exec:ruke-settings</TrayButton>
-    <TrayButton popup="Wi-Fi" icon="preferences-system-network">exec:ruke-wifi</TrayButton>
-    <TrayButton popup="Task Manager" icon="utilities-system-monitor">exec:xterm -T Tasks -e htop</TrayButton>
-    <TrayButton popup="Volume" icon="multimedia-volume-control">exec:xterm -T Volume -e alsamixer</TrayButton>
-    <Spacer width="8"/>
-  </Tray>
+  <!-- Bottom app dock is ruke-dock (magnification). Started from autostart. -->
+
 
   <WindowStyle decorations="flat">
     <Font>Inter:semibold:size=10</Font>

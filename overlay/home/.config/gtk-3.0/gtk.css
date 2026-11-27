@@ -104,16 +104,35 @@ scrolledwindow, viewport, list, listbox, list row, listbox row {
 }
 .cell:selected, iconview:selected, iconview.view:selected, .view:selected,
 row:selected, list row:selected {
-  background-color: alpha(#9B45FF, 0.38);
+  background-color: alpha(#7B4FD6, 0.38);
   color: #ffffff;
 }
 button:checked, togglebutton:checked, button.selected {
-  background-color: #9B45FF;
+  background-color: #7B4FD6;
   background-image: none;
   color: #ffffff;
 }
 switch { background-color: #414868; background-image: none; border: none; }
 switch:checked, switch:checked:hover, switch:checked:backdrop {
-  background-color: #9B45FF; background-image: none; border: none;
+  background-color: #7B4FD6; background-image: none; border: none;
 }
 switch slider { background-color: #c0caf5; background-image: none; border: none; box-shadow: none; }
+
+
+/* Standard text-editing keys (Mousepad and other GTK apps).
+   Do not set gtk-key-theme-name to Emacs: that makes Ctrl+A go to the
+   start of the line instead of Select all. */
+@binding-set ruke-textview {
+  bind "<Control>a" { "select-all" (1) };
+  bind "<Control>A" { "select-all" (1) };
+  bind "<Control>c" { "copy-clipboard" () };
+  bind "<Control>C" { "copy-clipboard" () };
+  bind "<Control>x" { "cut-clipboard" () };
+  bind "<Control>X" { "cut-clipboard" () };
+  bind "<Control>v" { "paste-clipboard" () };
+  bind "<Control>V" { "paste-clipboard" () };
+}
+textview, textview view, textview text {
+  -gtk-key-bindings: ruke-textview;
+}
+

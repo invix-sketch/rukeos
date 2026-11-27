@@ -3,7 +3,8 @@ mkdir -p "$HOME/Desktop"
 command -v xsettingsd >/dev/null && xsettingsd -c "$HOME/.config/xsettingsd/xsettingsd.conf" &
 feh --no-fehbg --bg-fill /usr/share/backgrounds/rukeos.png
 command -v pcmanfm >/dev/null && pcmanfm --desktop &
-picom -b --config /home/judah/.config/picom/picom.conf
+command -v ruke-compositor >/dev/null && ruke-compositor || picom -b --config "$HOME/.config/picom/picom.conf"
+command -v ruke-dock >/dev/null && ruke-dock --replace &
 command -v ruke-settings >/dev/null && ruke-settings --apply-session
 command -v dunst >/dev/null && dunst &
 command -v ruke-clipboard >/dev/null && ruke-clipboard --daemon &
