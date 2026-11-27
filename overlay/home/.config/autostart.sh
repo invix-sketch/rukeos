@@ -5,6 +5,10 @@ feh --no-fehbg --bg-fill /usr/share/backgrounds/rukeos.png
 command -v pcmanfm >/dev/null && pcmanfm --desktop &
 picom -b --config /home/judah/.config/picom/picom.conf
 command -v ruke-settings >/dev/null && ruke-settings --apply-session
+command -v dunst >/dev/null && dunst &
+command -v ruke-clipboard >/dev/null && ruke-clipboard --daemon &
+command -v udiskie >/dev/null && udiskie --automount --notify --no-tray &
+command -v ruke-notify-watch >/dev/null && ruke-notify-watch &
 command -v ruke-autolock >/dev/null && ruke-autolock
 if command -v ruke-passwd >/dev/null && [ "$(sudo -n ruke-passwd status 2>/dev/null)" = none ]; then
   command -v ruke-settings >/dev/null && ruke-settings --page security --prompt-password &

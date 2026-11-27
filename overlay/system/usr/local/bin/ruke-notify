@@ -1,0 +1,69 @@
+#!/bin/sh
+# Send a Tokyo Night dunst notification to the desktop user.
+# Usage: ruke-notify [-u user] [--urgency low|normal|critical] [--icon NAME] TITLE [BODY]
+USER_NAME=""; URGENCY=normal; ICON=dialog-information
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -u|--user) USER_NAME=$2; shift 2;;
+    --urgency) URGENCY=$2; shift 2;;
+    --icon) ICON=$2; shift 2;;
+    --) shift; break;;
+    -*) shift;;
+    *) break;;
+  esac
+done
+TITLE=${1:-rukeOS}
+[ $# -gt 0 ] && shift
+BODY=$*
+
+if [ -z "$USER_NAME" ]; then
+  if [ "$(id -u)" -eq 0 ]; then
+    USER_NAME=${RUKE_USER:-$(awk -F: '$3==1000{print $1; exit}' /etc/passwd)}
+  else
+    USER_NAME=$(id -un)
+  fi
+fi
+[ -n "$USER_NAME" ] || exit 0
+HOME_DIR=$(awk -F: -v u="$USER_NAME" '$1==u{print $6; exit}' /etc/passwd)
+UID_NUM=$(id -u "$USER_NAME" 2>/dev/null) || exit 0
+command -v notify-send >/dev/null 2>&1 || exit 0
+
+DISPLAY_VAL=${DISPLAY:-}
+XAUTH=${XAUTHORITY:-$HOME_DIR/.Xauthority}
+DBUS_VAL=${DBUS_SESSION_BUS_ADDRESS:-}
+RUNTIME=${XDG_RUNTIME_DIR:-}
+
+for name in dunst jwm dbus-launch ruke-settings pcmanfm; do
+  pid=$(pgrep -u "$UID_NUM" -x "$name" 2>/dev/null | head -n 1) || continue
+  [ -r "/proc/$pid/environ" ] || continue
+  envtxt=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null)
+  [ -z "$DISPLAY_VAL" ] && DISPLAY_VAL=$(printf '%s\n' "$envtxt" | sed -n 's/^DISPLAY=//p' | head -n 1)
+  [ -z "$DBUS_VAL" ] && DBUS_VAL=$(printf '%s\n' "$envtxt" | sed -n 's/^DBUS_SESSION_BUS_ADDRESS=//p' | head -n 1)
+  [ -z "$RUNTIME" ] && RUNTIME=$(printf '%s\n' "$envtxt" | sed -n 's/^XDG_RUNTIME_DIR=//p' | head -n 1)
+  xa=$(printf '%s\n' "$envtxt" | sed -n 's/^XAUTHORITY=//p' | head -n 1)
+  [ -n "$xa" ] && XAUTH=$xa
+  [ -n "$DISPLAY_VAL" ] && [ -n "$DBUS_VAL" ] && break
+done
+[ -n "$DISPLAY_VAL" ] || DISPLAY_VAL=:0
+[ -n "$RUNTIME" ] || RUNTIME=/tmp/runtime-$UID_NUM
+if [ -z "$DBUS_VAL" ] && [ -S "$RUNTIME/bus" ]; then
+  DBUS_VAL=unix:path=$RUNTIME/bus
+fi
+
+run_notify() {
+  env DISPLAY="$DISPLAY_VAL" XAUTHORITY="$XAUTH" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_VAL" XDG_RUNTIME_DIR="$RUNTIME" \
+    HOME="$HOME_DIR" USER="$USER_NAME" LOGNAME="$USER_NAME" \
+    notify-send -a rukeOS -u "$URGENCY" -i "$ICON" -- "$TITLE" "$BODY"
+}
+
+if [ "$(id -u)" -eq 0 ] && [ "$USER_NAME" != root ]; then
+  # sudo keeps the env we pass after env.
+  sudo -u "$USER_NAME" -H env DISPLAY="$DISPLAY_VAL" XAUTHORITY="$XAUTH" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_VAL" XDG_RUNTIME_DIR="$RUNTIME" \
+    HOME="$HOME_DIR" USER="$USER_NAME" LOGNAME="$USER_NAME" \
+    notify-send -a rukeOS -u "$URGENCY" -i "$ICON" -- "$TITLE" "$BODY" 2>/dev/null || true
+else
+  run_notify 2>/dev/null || true
+fi
+exit 0

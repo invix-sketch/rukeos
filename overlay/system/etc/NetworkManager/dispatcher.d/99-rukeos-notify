@@ -1,0 +1,27 @@
+#!/bin/sh
+# Notify when Wi-Fi connects or drops. Quiet until the desktop session is ready.
+IFACE=$1
+ACTION=$2
+[ -n "$IFACE" ] || exit 0
+[ -d /sys/class/net/"$IFACE"/wireless ] || exit 0
+
+U=${RUKE_USER:-$(awk -F: '$3==1000{print $1; exit}' /etc/passwd)}
+UID_NUM=$(id -u "$U" 2>/dev/null) || exit 0
+READY=
+for d in /tmp/runtime-$UID_NUM /run/user/$UID_NUM; do
+  [ -f "$d/ruke-desktop-ready" ] && READY=$d/ruke-desktop-ready && break
+done
+[ -n "$READY" ] || exit 0
+
+case "$ACTION" in
+  up)
+    ssid=$(iwgetid -r "$IFACE" 2>/dev/null)
+    [ -z "$ssid" ] && ssid=$(nmcli -t -f NAME,DEVICE connection show --active 2>/dev/null | awk -F: -v i="$IFACE" '$2==i{print $1; exit}')
+    [ -n "$ssid" ] || ssid="Wi-Fi"
+    ruke-notify -u "$U" --urgency low --icon network-wireless "Wi-Fi connected" "Connected to $ssid"
+    ;;
+  down)
+    ruke-notify -u "$U" --urgency normal --icon network-wireless-offline "Wi-Fi disconnected" "The wireless connection dropped."
+    ;;
+esac
+exit 0

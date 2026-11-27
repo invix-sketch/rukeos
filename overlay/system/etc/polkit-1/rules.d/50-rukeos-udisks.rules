@@ -1,0 +1,9 @@
+// Allow the desktop user (wheel / plugdev) to mount removable drives without a password.
+polkit.addRule(function (action, subject) {
+    if (action.id.indexOf("org.freedesktop.udisks2.") !== 0) {
+        return;
+    }
+    if (subject.isInGroup("wheel") || subject.isInGroup("plugdev") || subject.local) {
+        return polkit.Result.YES;
+    }
+});

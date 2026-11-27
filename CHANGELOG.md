@@ -4,7 +4,11 @@
 - Fix the 0.4.3 theme not applying over OTA: rukeOS-dark no longer @imports Adwaita-dark (a failed import made GTK discard the whole theme and fall back to a white/light Adwaita). Existing sticks get user and system theme settings rewritten by a migration, including xsettingsd.
 - Settings: the selected sidebar item and the Check for updates button stay purple with white text, even if the system theme falls back.
 - Lock screen always uses a plain dark background (not the wallpaper) and places the time, date, and “rukeOS · Locked” so they no longer overlap.
-- App store (Settings → Apps, or the App store menu item): a Windows apps section searches the public winget-pkgs catalog and installs classic .exe/.msi packages with Wine (installed on first use, x86_64 only). Store/MSIX packages are skipped. Launchers are added to the desktop and menu. Big apps may be slow on 512 MB.
+- App store (Settings → Apps, or the App store menu item): a Linux apps section installs or removes curated Alpine packages in the background (GIMP, LibreOffice, Geany, Solitaire, Mines, SuperTux) and adds a Discord browser launcher. A Windows apps section searches the public winget-pkgs catalog and installs classic .exe/.msi packages with Wine (installed on first use, x86_64 only). Store/MSIX packages are skipped. Launchers are added to the desktop and menu. Big apps may be slow on 512 MB.
+- Boot splash: the rukeOS logo is shown instead of scrolling service text. Existing sticks get a splash service, quieter OpenRC output on tty2, and a GRUB command-line patch when the live boot partition is writable.
+- Clipboard history on Super+V (Settings → Shortcuts). A small background helper remembers recent copies; the picker pastes the item you click.
+- Notifications use dunst with a Tokyo Night look. You get popups for low battery (15% and 8%), Wi-Fi connect/drop, and when an update finishes.
+- USB drives auto-mount (udisks2, gvfs, ntfs-3g, udiskie) and show in Files and as desktop icons.
 
 ## 0.4.3
 - Cosmetic fixes: Files (PCManFM) icon view is Tokyo Night dark instead of white, and folders use the Papirus folder icons instead of the dark app-tile. The Wi-Fi list, Night light / Airplane / Wi-Fi switches, and the selected Settings sidebar item are dark too. rukeOS-dark now starts from Adwaita-dark so those white holes stay closed.

@@ -94,6 +94,13 @@ DEFAULTS = [
         "command": "ruke-screenshot",
     },
     {
+        "id": "clipboard",
+        "label": "Clipboard history",
+        "keys": "Super+V",
+        "kind": "exec",
+        "command": "ruke-clipboard --popup",
+    },
+    {
         "id": "maximize",
         "label": "Maximize window",
         "keys": "Super+Up",
@@ -457,12 +464,40 @@ def apply_shortcuts(config=None, restart=False):
 
 
 def ensure_shortcuts():
-    """Create the keys file and JWM include if they are missing; never clobber a user keys file."""
+    """Create the keys file and JWM include if they are missing.
+
+    If a generated keys file is already present, add any new default
+    bindings (for example Super+V) unless the user disabled them.
+    Custom shortcuts in shortcuts.json are kept.
+    """
     cfg = load_config()
     if not os.path.isfile(config_path()):
         save_config(cfg)
-    if not os.path.isfile(keys_path()):
-        write_keys_xml(resolved_entries(cfg))
+    entries = resolved_entries(cfg)
+    path = keys_path()
+    if not os.path.isfile(path):
+        write_keys_xml(entries)
+    else:
+        try:
+            text = open(path, encoding="utf-8").read()
+        except OSError:
+            text = ""
+        missing = False
+        for e in entries:
+            if not e.get("enabled", True):
+                continue
+            mask, key = to_jwm(e.get("keys"))
+            if not key:
+                continue
+            if mask:
+                needle = 'mask="%s" key="%s"' % (mask, key)
+            else:
+                needle = 'key="%s"' % key
+            if needle not in text:
+                missing = True
+                break
+        if missing:
+            write_keys_xml(entries)
     patch_jwmrc()
     return keys_path()
 

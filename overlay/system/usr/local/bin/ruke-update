@@ -162,4 +162,9 @@ printf '%s|%s   rukeOS files   : %s changed, %s migrations\n' "$G" "$N" "$nf" "$
 printf '%s|%s   log            : %s\n' "$G" "$N" "$LOG"
 printf '%s+-------------------------------------------------------%s\n' "$G" "$N"
 [ "$nf" -gt 0 ] && say "Restart the desktop to see the changes: menu > Restart desktop (or reboot)."
+if command -v ruke-notify >/dev/null; then
+  msg="This computer is now on rukeOS $newv."
+  [ "$nf" -gt 0 ] && msg="$msg Restart the desktop to see the changes."
+  ruke-notify -u "$U" --urgency normal --icon software-update-available "rukeOS update finished" "$msg" || true
+fi
 exit 0

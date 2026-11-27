@@ -31,3 +31,15 @@ networkmanager-cli
 ca-certificates
 # Screenshot (PrtSc)
 scrot
+# Notifications (Tokyo Night dunst)
+dunst
+libnotify
+# USB auto-mount in Files and on the desktop
+udisks2
+gvfs
+gvfs-fuse
+ntfs-3g
+udiskie
+fuse3
+# Paste from clipboard history (Super+V)
+xdotool

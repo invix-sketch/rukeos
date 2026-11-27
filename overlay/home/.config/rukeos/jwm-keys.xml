@@ -12,6 +12,7 @@
   <Key mask="A" key="F4">close</Key>
   <Key mask="A" key="Tab">nextstacked</Key>
   <Key key="Print">exec:ruke-screenshot</Key>
+  <Key mask="4" key="v">exec:ruke-clipboard --popup</Key>
   <Key mask="4" key="Up">maximize</Key>
   <Key mask="4" key="Down">minimize</Key>
 </JWM>

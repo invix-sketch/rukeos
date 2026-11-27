@@ -1,0 +1,77 @@
+#!/bin/sh
+# Paint the rukeOS logo on the framebuffer (busybox fbsplash). Safe to call repeatedly.
+# Usage: ruke-splash
+FB=/dev/fb0
+DIR=/usr/share/rukeos/splash
+[ -c "$FB" ] || exit 0
+command -v busybox >/dev/null 2>&1 || exit 0
+busybox fbsplash -h >/dev/null 2>&1 || [ -x /bin/fbsplash ] || command -v fbsplash >/dev/null 2>&1 || exit 0
+
+# Hide kernel chatter and the cursor on the visible console.
+echo 1 >/proc/sys/kernel/printk 2>/dev/null || true
+[ -w /sys/class/graphics/fbcon/cursor_blink ] && echo 0 >/sys/class/graphics/fbcon/cursor_blink
+setterm -cursor off >/dev/console 2>/dev/null || true
+
+sz=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null) || exit 0
+w=${sz%,*}; h=${sz#*,}
+[ -n "$w" ] && [ -n "$h" ] || exit 0
+exact="$DIR/${w}x${h}.ppm.gz"
+tmp=/run/ruke-splash.ppm
+rm -f "$tmp"
+
+if [ -f "$exact" ]; then
+  zcat "$exact" > "$tmp" 2>/dev/null || exit 0
+else
+  # Scale the nearest shipped image (or 1920x1080) with a tiny Python nearest-neighbor.
+  src=$DIR/1920x1080.ppm.gz
+  best=99999999
+  for f in "$DIR"/*.ppm.gz; do
+    [ -f "$f" ] || continue
+    n=$(basename "$f" .ppm.gz)
+    sw=${n%x*}; sh=${n#*x}
+    d=$(( (sw - w) * (sw - w) + (sh - h) * (sh - h) ))
+    [ "$d" -lt 0 ] && d=$((-d))
+    if [ "$d" -lt "$best" ]; then best=$d; src=$f; fi
+  done
+  [ -f "$src" ] || exit 0
+  zcat "$src" 2>/dev/null | python3 -c '
+import sys
+hdr = []
+def token():
+    while True:
+        if hdr:
+            return hdr.pop(0)
+        line = sys.stdin.buffer.readline()
+        if not line:
+            raise SystemExit(1)
+        if line.startswith(b"#"):
+            continue
+        hdr.extend(line.split())
+magic = token()
+if magic != b"P6":
+    raise SystemExit(1)
+sw, sh, mx = int(token()), int(token()), int(token())
+data = sys.stdin.buffer.read()
+w, h = int(sys.argv[1]), int(sys.argv[2])
+out = bytearray(w * h * 3)
+for y in range(h):
+    sy = y * sh // h
+    src_row = sy * sw * 3
+    dst_row = y * w * 3
+    for x in range(w):
+        sx = x * sw // w
+        i = src_row + sx * 3
+        j = dst_row + x * 3
+        out[j:j+3] = data[i:i+3]
+sys.stdout.buffer.write(b"P6\n%d %d\n255\n" % (w, h))
+sys.stdout.buffer.write(out)
+' "$w" "$h" > "$tmp" || exit 0
+fi
+
+if command -v fbsplash >/dev/null 2>&1; then
+  fbsplash -s "$tmp" -d "$FB" >/dev/null 2>&1 || busybox fbsplash -s "$tmp" -d "$FB" >/dev/null 2>&1 || true
+else
+  busybox fbsplash -s "$tmp" -d "$FB" >/dev/null 2>&1 || true
+fi
+rm -f "$tmp"
+exit 0

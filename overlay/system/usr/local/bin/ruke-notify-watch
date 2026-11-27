@@ -1,0 +1,58 @@
+#!/bin/sh
+# Lightweight battery watcher. Wi-Fi events come from the NetworkManager dispatcher.
+# Runs from autostart; one instance per session.
+LOCKDIR=${XDG_RUNTIME_DIR:-/tmp}/ruke-notify-watch
+mkdir -p "$(dirname "$LOCKDIR")" 2>/dev/null
+if [ -d "$LOCKDIR" ]; then
+  old=$(cat "$LOCKDIR/pid" 2>/dev/null)
+  if [ -n "$old" ] && kill -0 "$old" 2>/dev/null; then
+    exit 0
+  fi
+fi
+mkdir -p "$LOCKDIR"
+echo $$ > "$LOCKDIR/pid"
+# Let the session (and dunst) come up first; also skips a boot-time "connected" race.
+sleep 12
+ready=${XDG_RUNTIME_DIR:-/tmp}/ruke-desktop-ready
+touch "$ready"
+
+STATE=$LOCKDIR/battery-level
+# 0 = none/ok, 15 = warned, 8 = critical already shown
+echo 0 > "$STATE"
+
+bat_path() {
+  for d in /sys/class/power_supply/BAT* /sys/class/power_supply/bat*; do
+    [ -f "$d/capacity" ] || continue
+    echo "$d"
+    return 0
+  done
+  return 1
+}
+
+on_ac() {
+  for d in /sys/class/power_supply/AC /sys/class/power_supply/ACAD /sys/class/power_supply/ADP* /sys/class/power_supply/A[Cc]*; do
+    [ -f "$d/online" ] || continue
+    [ "$(cat "$d/online" 2>/dev/null)" = 1 ] && return 0
+  done
+  return 1
+}
+
+while :; do
+  b=$(bat_path) || { sleep 60; continue; }
+  cap=$(cat "$b/capacity" 2>/dev/null) || { sleep 60; continue; }
+  st=$(cat "$b/status" 2>/dev/null)
+  last=$(cat "$STATE" 2>/dev/null || echo 0)
+  charging=0
+  on_ac && charging=1
+  case "$st" in Charging|Full|Not?charging) charging=1;; esac
+  if [ "$charging" = 1 ] || [ "$cap" -gt 20 ]; then
+    echo 0 > "$STATE"
+  elif [ "$cap" -le 8 ] && [ "$last" -ne 8 ]; then
+    ruke-notify --urgency critical --icon battery-caution "Battery low" "${cap}% remaining. Plug in a charger."
+    echo 8 > "$STATE"
+  elif [ "$cap" -le 15 ] && [ "$last" -eq 0 ]; then
+    ruke-notify --urgency normal --icon battery-low "Battery low" "${cap}% remaining."
+    echo 15 > "$STATE"
+  fi
+  sleep 30
+done

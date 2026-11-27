@@ -1,0 +1,322 @@
+#!/usr/bin/python3
+"""Clipboard history for rukeOS. Super+V opens the picker; a small daemon records copies."""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+
+os.environ.setdefault("NO_AT_BRIDGE", "1")
+os.environ.setdefault("GTK_A11Y", "none")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gtk, Gdk, GLib, Pango
+
+MAX_ITEMS = 30
+MAX_CHARS = 8000
+BG, SURF, FG, MUTED, BLUE = "#1a1b26", "#24283b", "#c0caf5", "#565f89", "#7aa2f7"
+
+CSS = """
+window, .background { background-color: #1a1b26; color: #c0caf5; font-family: Inter, sans-serif; }
+#clip-frame { background-color: #1a1b26; border: 1px solid rgba(122,162,247,0.35); border-radius: 12px; }
+#clip-list button { background-color: #16161e; color: #c0caf5; border: none; border-radius: 8px;
+  padding: 8px 10px; box-shadow: none; }
+#clip-list button:hover { background-color: #24283b; }
+#clip-list button:focus { box-shadow: inset 0 0 0 2px #7aa2f7; }
+.muted { color: #565f89; }
+"""
+
+
+def home_dir():
+    return os.environ.get("HOME") or os.path.expanduser("~")
+
+
+def history_path():
+    base = os.path.join(home_dir(), ".cache", "rukeos")
+    os.makedirs(base, mode=0o700, exist_ok=True)
+    return os.path.join(base, "clipboard.json")
+
+
+def pid_path(name):
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    os.makedirs(runtime, exist_ok=True)
+    return os.path.join(runtime, name + ".pid")
+
+
+def load_history():
+    path = history_path()
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return [str(x) for x in data if isinstance(x, str) and x]
+    except (OSError, ValueError, TypeError):
+        pass
+    return []
+
+
+def save_history(items):
+    path = history_path()
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(items[:MAX_ITEMS], f, ensure_ascii=False)
+        f.write("\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+
+
+def remember(text, items=None):
+    text = (text or "").replace("\x00", "")
+    if not text.strip():
+        return items or load_history()
+    if len(text) > MAX_CHARS:
+        text = text[:MAX_CHARS]
+    items = [i for i in (items if items is not None else load_history()) if i != text]
+    items.insert(0, text)
+    save_history(items[:MAX_ITEMS])
+    return items[:MAX_ITEMS]
+
+
+def apply_css():
+    css = Gtk.CssProvider()
+    css.load_from_data(CSS.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(
+        Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER
+    )
+
+
+def set_clipboard(text):
+    clip = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+    clip.set_text(text, -1)
+    clip.store()
+
+
+def paste_to_previous(window_id):
+    if not window_id or not shutil_which("xdotool"):
+        return
+    try:
+        subprocess.run(
+            ["xdotool", "windowactivate", "--sync", str(window_id)],
+            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2,
+        )
+        time.sleep(0.05)
+        subprocess.run(
+            ["xdotool", "key", "--clearmodifiers", "ctrl+v"],
+            check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def shutil_which(name):
+    from shutil import which
+    return which(name)
+
+
+def active_window_id():
+    if not shutil_which("xdotool"):
+        return ""
+    try:
+        out = subprocess.check_output(["xdotool", "getactivewindow"], timeout=1)
+        return out.decode().strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def daemon_loop():
+    apply_css()
+    path = pid_path("ruke-clipboard-daemon")
+    with open(path, "w") as f:
+        f.write(str(os.getpid()))
+    clip = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+    last = [""]
+
+    def on_change(*_):
+        def got(_c, text):
+            if text and text != last[0]:
+                last[0] = text
+                remember(text)
+        clip.request_text(got)
+
+    clip.connect("owner-change", on_change)
+    # Catch a copy that happened before we started.
+    clip.request_text(lambda _c, text: text and remember(text) or None)
+
+    def poll():
+        clip.request_text(lambda _c, text: (text and text != last[0] and (last.__setitem__(0, text), remember(text))))
+        return True
+
+    GLib.timeout_add(800, poll)
+    Gtk.main()
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+    return 0
+
+
+class ClipboardPopup(Gtk.Window):
+    def __init__(self, previous_window=""):
+        Gtk.Window.__init__(self, title="Clipboard history")
+        self.set_decorated(False)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_keep_above(True)
+        self.set_resizable(False)
+        self.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+        self.set_default_size(360, 1)
+        self.previous_window = previous_window
+        self.connect("key-press-event", self._on_key)
+        self.connect("focus-out-event", lambda *_: GLib.timeout_add(150, self._maybe_close))
+        self.connect("destroy", Gtk.main_quit)
+
+        frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        frame.set_name("clip-frame")
+        self.add(frame)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        root.set_margin_start(12)
+        root.set_margin_end(12)
+        root.set_margin_top(12)
+        root.set_margin_bottom(12)
+        frame.pack_start(root, True, True, 0)
+
+        head = Gtk.Label(xalign=0)
+        head.set_markup("<b>Clipboard history</b>")
+        root.pack_start(head, False, False, 0)
+        hint = Gtk.Label(label="Click an item to paste  ·  Esc to close", xalign=0)
+        hint.get_style_context().add_class("muted")
+        root.pack_start(hint, False, False, 0)
+
+        items = load_history()
+        if not items:
+            empty = Gtk.Label(label="Nothing copied yet.", xalign=0)
+            empty.get_style_context().add_class("muted")
+            root.pack_start(empty, False, False, 0)
+        else:
+            lst = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            lst.set_name("clip-list")
+            for text in items:
+                btn = Gtk.Button()
+                btn.set_relief(Gtk.ReliefStyle.NONE)
+                lab = Gtk.Label(xalign=0)
+                preview = text.replace("\n", " ").strip()
+                if len(preview) > 80:
+                    preview = preview[:79] + "…"
+                lab.set_text(preview or "(blank line)")
+                lab.set_ellipsize(Pango.EllipsizeMode.END)
+                lab.set_max_width_chars(42)
+                btn.add(lab)
+                btn.connect("clicked", self._pick, text)
+                lst.pack_start(btn, False, False, 0)
+            sc = Gtk.ScrolledWindow()
+            sc.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            sc.set_min_content_height(min(360, 48 * min(len(items), 8)))
+            sc.add(lst)
+            root.pack_start(sc, True, True, 0)
+
+        self.show_all()
+        self.present()
+
+    def _maybe_close(self):
+        if not self.has_toplevel_focus():
+            self.destroy()
+        return False
+
+    def _on_key(self, _w, ev):
+        if ev.keyval == Gdk.KEY_Escape:
+            self.destroy()
+            return True
+        return False
+
+    def _pick(self, _btn, text):
+        set_clipboard(text)
+        remember(text)
+        prev = self.previous_window
+        self.hide()
+        GLib.idle_add(self._paste_and_quit, text, prev)
+        return True
+
+    def _paste_and_quit(self, text, prev):
+        set_clipboard(text)
+        paste_to_previous(prev)
+        self.destroy()
+        return False
+
+
+def toggle_or_kill(name):
+    path = pid_path(name)
+    try:
+        with open(path) as f:
+            pid = int(f.read().strip() or "0")
+    except (OSError, ValueError):
+        return False
+    if pid and pid != os.getpid():
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            return False
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+        return True
+    return False
+
+
+def popup():
+    if toggle_or_kill("ruke-clipboard-popup"):
+        return 0
+    apply_css()
+    prev = active_window_id()
+    path = pid_path("ruke-clipboard-popup")
+    with open(path, "w") as f:
+        f.write(str(os.getpid()))
+
+    def cleanup(*_):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        Gtk.main_quit()
+
+    signal.signal(signal.SIGTERM, cleanup)
+    signal.signal(signal.SIGINT, cleanup)
+    win = ClipboardPopup(previous_window=prev)
+    win.connect("destroy", lambda *_: cleanup())
+    Gtk.main()
+    return 0
+
+
+def main(argv=None):
+    p = argparse.ArgumentParser(prog="ruke-clipboard")
+    p.add_argument("--daemon", action="store_true", help="record clipboard changes")
+    p.add_argument("--popup", action="store_true", help="show the history picker")
+    args = p.parse_args(argv)
+    if args.daemon:
+        # single daemon
+        path = pid_path("ruke-clipboard-daemon")
+        try:
+            with open(path) as f:
+                pid = int(f.read().strip() or "0")
+            if pid and pid != os.getpid():
+                os.kill(pid, 0)
+                return 0
+        except (OSError, ValueError):
+            pass
+        return daemon_loop()
+    return popup()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

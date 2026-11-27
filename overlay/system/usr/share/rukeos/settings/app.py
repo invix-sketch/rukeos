@@ -67,6 +67,10 @@ try:
     import windows_apps as ruke_winapps
 except ImportError:
     ruke_winapps = None
+try:
+    import linux_apps as ruke_linuxapps
+except ImportError:
+    ruke_linuxapps = None
 WALLPAPER_DEFAULT = "/usr/share/backgrounds/rukeos.png"
 UPDATE_LOG = "/var/log/ruke-update.log"
 VERSION_FILE = "/etc/rukeos/version"
@@ -1101,7 +1105,9 @@ class SettingsWindow(Gtk.Window):
             GLib.set_prgname("RukeSettings")
         except Exception:
             pass
-        if page == "shortcuts" and screenshot:
+        if page == "apps" and screenshot:
+            self.set_default_size(760, 1000)
+        elif page == "shortcuts" and screenshot:
             self.set_default_size(760, 920)
         elif page == "shortcuts":
             self.set_default_size(760, 640)
@@ -1891,9 +1897,26 @@ class SettingsWindow(Gtk.Window):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         box.pack_start(heading("App store"), False, False, 0)
         box.pack_start(
-            muted("Install classic Windows programs (.exe / .msi) with Wine. Big apps may be slow or run out of memory on a 512 MB computer."),
+            muted("Install a few popular Linux apps with one click, or search the Windows catalog and install with Wine. Large apps may be slow or run out of memory on a 512 MB computer."),
             False, False, 0,
         )
+
+        fr, inner = card()
+        inner.pack_start(heading("Linux apps"), False, False, 0)
+        inner.pack_start(
+            muted("These are Alpine packages (or a browser launcher for Discord). Install and remove run in the background."),
+            False, False, 0,
+        )
+        self.linux_apps_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        inner.pack_start(self.linux_apps_box, False, False, 0)
+        self.linux_apps_status = Gtk.Label(xalign=0)
+        self.linux_apps_status.set_line_wrap(True)
+        self.linux_apps_status.get_style_context().add_class("muted")
+        inner.pack_start(self.linux_apps_status, False, False, 0)
+        box.pack_start(fr, False, False, 0)
+        self._linux_rows = {}
+        self._refresh_linux_apps()
+
         fr, inner = card()
         inner.pack_start(heading("Windows apps"), False, False, 0)
         self.winapps_status = Gtk.Label(xalign=0)
@@ -1924,6 +1947,104 @@ class SettingsWindow(Gtk.Window):
         box.pack_start(fr, False, False, 0)
         self._refresh_winapps_status()
         return box
+
+    def _refresh_linux_apps(self):
+        for child in list(self.linux_apps_box.get_children()):
+            self.linux_apps_box.remove(child)
+        self._linux_rows = {}
+        if ruke_linuxapps is None:
+            self.linux_apps_status.set_text("Linux apps helper is missing.")
+            return
+        last_cat = None
+        for app in ruke_linuxapps.APPS:
+            cat = app.get("category") or ""
+            if cat and cat != last_cat:
+                lab = Gtk.Label(xalign=0)
+                lab.set_markup("<span size='small' foreground='#565f89'>%s</span>" % GLib.markup_escape_text(cat))
+                lab.set_margin_top(4)
+                self.linux_apps_box.pack_start(lab, False, False, 0)
+                last_cat = cat
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            # Prefer a themed icon; fall back to a simple label.
+            img = Gtk.Image()
+            try:
+                img.set_from_icon_name(app.get("icon") or "application-x-executable", Gtk.IconSize.DND)
+            except Exception:
+                pass
+            img.set_valign(Gtk.Align.START)
+            row.pack_start(img, False, False, 0)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            title = Gtk.Label(xalign=0)
+            title.set_markup("<b>%s</b>" % GLib.markup_escape_text(app["name"]))
+            col.pack_start(title, False, False, 0)
+            summary = app.get("summary") or ""
+            if app.get("heavy"):
+                summary = (summary + "  ·  large — may be slow on 512 MB").strip(" ·")
+            sub = Gtk.Label(label=summary, xalign=0)
+            sub.get_style_context().add_class("muted")
+            sub.set_line_wrap(True)
+            col.pack_start(sub, False, False, 0)
+            prog = Gtk.ProgressBar()
+            prog.set_no_show_all(True)
+            prog.set_show_text(False)
+            col.pack_start(prog, False, False, 0)
+            row.pack_start(col, True, True, 0)
+            installed = ruke_linuxapps.is_installed(app)
+            btn = Gtk.Button(label="Remove" if installed else "Install")
+            if not installed:
+                btn.get_style_context().add_class("suggested-action")
+                _force_accent_button(btn)
+            btn.set_valign(Gtk.Align.CENTER)
+            btn.connect("clicked", self._on_linux_app, app["id"])
+            row.pack_start(btn, False, False, 0)
+            self.linux_apps_box.pack_start(row, False, False, 0)
+            self._linux_rows[app["id"]] = {"button": btn, "progress": prog, "app": app}
+        self.linux_apps_box.show_all()
+
+    def _on_linux_app(self, _btn, app_id):
+        if ruke_linuxapps is None:
+            return
+        app = ruke_linuxapps.app_by_id(app_id)
+        if not app:
+            return
+        row = self._linux_rows.get(app_id) or {}
+        btn = row.get("button")
+        bar = row.get("progress")
+        if btn:
+            btn.set_sensitive(False)
+        if bar:
+            bar.show()
+            bar.set_fraction(0.08)
+            bar.pulse()
+        installing = not ruke_linuxapps.is_installed(app)
+        self.linux_apps_status.set_text(
+            ("Installing %s…" if installing else "Removing %s…") % app["name"]
+        )
+
+        def progress(msg):
+            def tick():
+                self.linux_apps_status.set_text(msg)
+                if bar:
+                    bar.pulse()
+                return False
+            GLib.idle_add(tick)
+
+        def work():
+            if installing:
+                rc, msg = ruke_linuxapps.install_app(app, progress=progress)
+            else:
+                rc, msg = ruke_linuxapps.remove_app(app, progress=progress)
+
+            def done():
+                if bar:
+                    bar.set_fraction(1 if rc == 0 else 0)
+                    bar.hide()
+                self.linux_apps_status.set_text(msg)
+                self._refresh_linux_apps()
+                return False
+            GLib.idle_add(done)
+
+        threading.Thread(target=work, daemon=True).start()
 
     def _refresh_winapps_status(self):
         if ruke_winapps is None:
@@ -2092,6 +2213,7 @@ class SettingsWindow(Gtk.Window):
             "<b>Super</b>+<b>L</b>  lock the screen\n"
             "<b>Alt</b>+<b>Tab</b>  switch windows    <b>Alt</b>+<b>F4</b>  close the window\n"
             "<b>PrtSc</b>  screenshot (saved to Pictures)\n"
+            "<b>Super</b>+<b>V</b>  clipboard history\n"
             "<b>Super</b>+<b>Up</b>  maximize    <b>Super</b>+<b>Down</b>  minimize",
         )
         ver = os_version()
@@ -2891,7 +3013,7 @@ class LockPreview(Gtk.Window):
 class FileManagerPreview(Gtk.Window):
     """Tokyo Night PCManFM stand-in used for preview-files.png (host has no pcmanfm)."""
 
-    def __init__(self, screenshot=None):
+    def __init__(self, screenshot=None, usb=False):
         Gtk.Window.__init__(self, title="Files")
         self.set_default_size(900, 560)
         self.set_name("files-preview")
@@ -2928,19 +3050,29 @@ class FileManagerPreview(Gtk.Window):
         side.set_size_request(180, -1)
         side.set_margin_top(8)
         side.set_margin_start(8)
-        for name, lab, kind in (("user", "Home", "app"), ("folder", "Desktop", "folder"),
-                          ("folder", "Documents", "folder"), ("folder", "Downloads", "folder"),
-                          ("folder", "Pictures", "folder"),
-                          ("video", "Videos", "app"), ("music", "Music", "app")):
+        places = [("user", "Home", "app"), ("folder", "Desktop", "folder"),
+                  ("folder", "Documents", "folder"), ("folder", "Downloads", "folder"),
+                  ("folder", "Pictures", "folder"),
+                  ("video", "Videos", "app"), ("music", "Music", "app")]
+        if usb:
+            places.append(("drive", "USB Drive", "drive"))
+        for name, lab, kind in places:
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             row.set_margin_start(10)
             row.set_margin_end(10)
             row.set_margin_top(4)
             row.set_margin_bottom(4)
-            row.pack_start(folder_image(20) if kind == "folder" else icon_image(name, 20), False, False, 0)
+            if kind == "folder":
+                row.pack_start(folder_image(20), False, False, 0)
+            elif kind == "drive":
+                row.pack_start(drive_image(20), False, False, 0)
+            else:
+                row.pack_start(icon_image(name, 20), False, False, 0)
             l = Gtk.Label(label=lab, xalign=0)
             if lab == "Home":
                 l.set_markup("<b>Home</b>")
+            if lab == "USB Drive":
+                l.set_markup("<b>USB Drive</b>")
             row.pack_start(l, True, True, 0)
             side.pack_start(row, False, False, 0)
         body.pack_start(side, False, False, 0)
@@ -2967,7 +3099,7 @@ class FileManagerPreview(Gtk.Window):
         view.pack_start(grid, True, True, 0)
         body.pack_start(view, True, True, 0)
 
-        status = Gtk.Label(label="6 items", xalign=0)
+        status = Gtk.Label(label=("6 items" if not usb else "6 items  ·  USB Drive mounted"), xalign=0)
         status.get_style_context().add_class("muted")
         status.set_margin_start(12)
         status.set_margin_top(4)
@@ -3516,6 +3648,45 @@ AUDIO_PATTERNS = (
 )
 
 
+def drive_pixbuf(size=24):
+    """Removable-drive icon for Files previews (USB in the places pane)."""
+    import cairo
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    cr = cairo.Context(surface)
+    cr.scale(size / 24.0, size / 24.0)
+    # body
+    cr.set_source_rgb(0x7a / 255, 0xa2 / 255, 0xf7 / 255)
+    def _r(cr, x, y, w, h, r):
+        cr.new_path()
+        cr.move_to(x + r, y)
+        cr.line_to(x + w - r, y)
+        cr.curve_to(x + w, y, x + w, y, x + w, y + r)
+        cr.line_to(x + w, y + h - r)
+        cr.curve_to(x + w, y + h, x + w, y + h, x + w - r, y + h)
+        cr.line_to(x + r, y + h)
+        cr.curve_to(x, y + h, x, y + h, x, y + h - r)
+        cr.line_to(x, y + r)
+        cr.curve_to(x, y, x, y, x + r, y)
+        cr.close_path()
+    _r(cr, 3, 7, 18, 11, 2.5)
+    cr.fill()
+    # metal tip
+    cr.set_source_rgb(0x56 / 255, 0x5f / 255, 0x89 / 255)
+    _r(cr, 8, 3, 8, 5, 1.2)
+    cr.fill()
+    # activity light
+    cr.set_source_rgb(0x9e / 255, 0xce / 255, 0x6a / 255)
+    cr.arc(7, 12.5, 1.3, 0, 6.28)
+    cr.fill()
+    return Gdk.pixbuf_get_from_surface(surface, 0, 0, size, size)
+
+
+def drive_image(size=24):
+    img = Gtk.Image()
+    img.set_from_pixbuf(drive_pixbuf(size))
+    return img
+
+
 def play_with_mpv(files):
     if not files:
         return 1
@@ -3608,6 +3779,67 @@ def toggle_instance(name):
     return False
 
 
+class NotificationPreview(Gtk.Window):
+    """Tokyo Night dunst-style popup used for preview-notification.png."""
+
+    def __init__(self, screenshot=None):
+        Gtk.Window.__init__(self, title="Notification")
+        self.set_decorated(False)
+        self.set_resizable(False)
+        self.set_default_size(320, 1)
+        self.set_name("notif-preview")
+        self.connect("destroy", Gtk.main_quit)
+        css = Gtk.CssProvider()
+        css.load_from_data(b"""
+            #notif-preview { background-color: rgba(0,0,0,0); }
+            #notif-card { background-color: #1a1b26; color: #c0caf5;
+              border: 2px solid #7aa2f7; border-radius: 12px; }
+            #notif-card .muted { color: #565f89; }
+        """)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        # Desktop-ish backdrop so the popup is visible in the PNG
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        outer.set_size_request(640, 200)
+        outer.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0.10, 0.10, 0.15, 1))
+        self.add(outer)
+        align = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        align.set_halign(Gtk.Align.END)
+        align.set_valign(Gtk.Align.START)
+        align.set_margin_top(16)
+        align.set_margin_end(16)
+        outer.pack_start(align, True, True, 0)
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        card.set_name("notif-card")
+        card.set_margin_start(2)
+        card.set_margin_end(2)
+        card.set_size_request(320, -1)
+        inner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        inner.set_margin_start(14)
+        inner.set_margin_end(14)
+        inner.set_margin_top(12)
+        inner.set_margin_bottom(12)
+        # battery-ish glyph
+        icon = Gtk.Label()
+        icon.set_markup("<span size='x-large'>🔋</span>")
+        inner.pack_start(icon, False, False, 0)
+        col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        title = Gtk.Label(xalign=0)
+        title.set_markup("<b>Battery low</b>")
+        body = Gtk.Label(label="15% remaining.", xalign=0)
+        body.get_style_context().add_class("muted")
+        col.pack_start(title, False, False, 0)
+        col.pack_start(body, False, False, 0)
+        inner.pack_start(col, True, True, 0)
+        card.pack_start(inner, True, True, 0)
+        align.pack_start(card, False, False, 0)
+        maybe_screenshot(self, screenshot)
+        if not screenshot:
+            self.show_all()
+            self.present()
+
+
 def write_pid(name):
     runtime = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
     os.makedirs(runtime, exist_ok=True)
@@ -3626,6 +3858,8 @@ def main(argv=None):
     p.add_argument("--preview-desktop", action="store_true", help="render a desktop-icons preview and exit")
     p.add_argument("--preview-lock", action="store_true", help="render a lock-screen preview and exit")
     p.add_argument("--preview-files", action="store_true", help="render a Files (PCManFM) theme preview and exit")
+    p.add_argument("--usb", action="store_true", help="include a USB drive in the Files preview")
+    p.add_argument("--preview-notification", action="store_true", help="render a notification popup preview and exit")
     p.add_argument("--add-shortcut", action="store_true", help="pick an app and add a shortcut to the desktop")
     p.add_argument("--prompt-password", action="store_true", help="open Security and ask to set a password if none is set")
     p.add_argument("--tray", action="store_true", help="Wi-Fi indicator for the top bar")
@@ -3667,7 +3901,11 @@ def main(argv=None):
         Gtk.main()
         return 0
     if args.preview_files:
-        FileManagerPreview(screenshot=args.screenshot)
+        FileManagerPreview(screenshot=args.screenshot, usb=args.usb)
+        Gtk.main()
+        return 0
+    if args.preview_notification:
+        NotificationPreview(screenshot=args.screenshot)
         Gtk.main()
         return 0
     if args.add_shortcut:
