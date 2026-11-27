@@ -6,3 +6,4 @@
 .config/mpv/mpv.conf
 .config/rukeos/shortcuts.json
 .config/rukeos/jwm-keys.xml
+.config/jgmenu/windows-apps.csv

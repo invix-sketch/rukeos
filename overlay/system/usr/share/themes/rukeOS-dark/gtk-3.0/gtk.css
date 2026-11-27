@@ -1,8 +1,6 @@
-/* rukeOS-dark: Adwaita-dark as a complete base, then Tokyo Night surfaces.
-   Importing the built-in dark theme closes the white holes (iconview, lists,
-   switches, selected rows) that a partial custom sheet left behind. */
-@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained-dark.css");
-
+/* rukeOS-dark: self-contained Tokyo Night GTK3 theme.
+   Do not @import Adwaita-dark: a missing resource/file makes GTK reject this
+   entire stylesheet and fall back to Adwaita light (white Files, light chrome). */
 @define-color accent_color #9B45FF;
 @define-color accent_bg_color #9B45FF;
 @define-color accent_fg_color #ffffff;

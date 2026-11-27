@@ -63,6 +63,10 @@ try:
     import shortcuts as ruke_shortcuts
 except ImportError:
     ruke_shortcuts = None
+try:
+    import windows_apps as ruke_winapps
+except ImportError:
+    ruke_winapps = None
 WALLPAPER_DEFAULT = "/usr/share/backgrounds/rukeos.png"
 UPDATE_LOG = "/var/log/ruke-update.log"
 VERSION_FILE = "/etc/rukeos/version"
@@ -84,11 +88,16 @@ headerbar button { color: #c0caf5; border-radius: 8px; }
 .sidebar button.selected label, .sidebar button:checked label { color: #ffffff; }
 
 .card { background-color: #24283b; border-radius: 12px; padding: 16px; }
-button.suggested-action, button.accent {
-  background-image: none; background-color: #9b45ff; color: #ffffff;
-  border-radius: 8px; border: none; padding: 8px 16px; font-weight: 600; }
-button.suggested-action:hover, button.accent:hover { background-color: #8b63e0; }
+button.suggested-action, button.suggested-action:hover, button.suggested-action:focus,
+button.suggested-action:active, button.suggested-action:checked, button.suggested-action:backdrop,
+button.accent, button.accent:hover {
+  background-image: none; background-color: #9B45FF; background: #9B45FF;
+  color: #ffffff; border: none; border-image: none; box-shadow: none;
+  text-shadow: none; -gtk-icon-shadow: none; outline: none;
+  border-radius: 8px; padding: 8px 16px; font-weight: 600; min-height: 32px; }
+button.suggested-action:hover, button.accent:hover { background-color: #8b63e0; background: #8b63e0; background-image: none; }
 button.suggested-action:disabled { opacity: 0.55; }
+button.suggested-action label, button.accent label { color: #ffffff; background: none; }
 button.flat { background: none; border: none; box-shadow: none; color: #c0caf5; border-radius: 8px; }
 button.danger { background-image: none; background-color: #f7768e; color: #16161e;
   border-radius: 8px; border: none; padding: 8px 14px; }
@@ -287,6 +296,20 @@ def icon_image(name, size=24):
         return Gtk.Image.new_from_pixbuf(pb)
     return Gtk.Image.new_from_icon_name("preferences-system", Gtk.IconSize.BUTTON)
 
+
+
+def _force_accent_button(btn):
+    """Pin purple background + white label so Adwaita-light cannot paint a white pill."""
+    css = Gtk.CssProvider()
+    css.load_from_data(b"""
+        button, button:hover, button:focus, button:active, button:checked, button:backdrop {
+          background-image: none; background-color: #9B45FF; background: #9B45FF;
+          color: #ffffff; border: none; border-image: none; box-shadow: none;
+          text-shadow: none; -gtk-icon-shadow: none; outline: none;
+          border-radius: 8px; min-height: 32px; padding: 8px 16px; }
+        button label { color: #ffffff; background: none; }
+    """)
+    btn.get_style_context().add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
 def apply_css(widget=None):
     try:
@@ -1114,7 +1137,7 @@ class SettingsWindow(Gtk.Window):
         self.stack.set_vexpand(True)
         self.stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
         self.nav = {}
-        for key, label in (("updates", "Updates"), ("customization", "Customization"), ("security", "Security"), ("shortcuts", "Shortcuts"), ("help", "Help")):
+        for key, label in (("updates", "Updates"), ("customization", "Customization"), ("security", "Security"), ("shortcuts", "Shortcuts"), ("apps", "Apps"), ("help", "Help")):
             b = Gtk.Button(label=label)
             b.set_relief(Gtk.ReliefStyle.NONE)
             child = b.get_child()
@@ -1139,6 +1162,7 @@ class SettingsWindow(Gtk.Window):
         self.stack.add_titled(self._build_customization(), "customization", "Customization")
         self.stack.add_titled(self._build_security(), "security", "Security")
         self.stack.add_titled(self._build_shortcuts(), "shortcuts", "Shortcuts")
+        self.stack.add_titled(self._build_apps(), "apps", "Apps")
         self.stack.add_titled(self._build_help(), "help", "Help")
         self._page = page if page in self.nav else "updates"
         self._goto(None, self._page)
@@ -1189,6 +1213,7 @@ class SettingsWindow(Gtk.Window):
         btnrow = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.check_btn = Gtk.Button(label="Check for updates")
         self.check_btn.get_style_context().add_class("suggested-action")
+        _force_accent_button(self.check_btn)
         self.check_btn.connect("clicked", self._on_check)
         btnrow.pack_start(self.check_btn, False, False, 0)
         self.restart_btn = Gtk.Button(label="Restart desktop")
@@ -1860,6 +1885,163 @@ class SettingsWindow(Gtk.Window):
         (cfg.setdefault("overrides", {})).pop(entry.get("id"), None)
         ruke_shortcuts.save_config(cfg)
         self._apply_shortcuts_now("Shortcut reset.")
+
+
+    def _build_apps(self):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        box.pack_start(heading("App store"), False, False, 0)
+        box.pack_start(
+            muted("Install classic Windows programs (.exe / .msi) with Wine. Big apps may be slow or run out of memory on a 512 MB computer."),
+            False, False, 0,
+        )
+        fr, inner = card()
+        inner.pack_start(heading("Windows apps"), False, False, 0)
+        self.winapps_status = Gtk.Label(xalign=0)
+        self.winapps_status.set_line_wrap(True)
+        self.winapps_status.get_style_context().add_class("muted")
+        inner.pack_start(self.winapps_status, False, False, 0)
+        self.winapps_wine_btn = Gtk.Button(label="Install Wine")
+        self.winapps_wine_btn.get_style_context().add_class("suggested-action")
+        _force_accent_button(self.winapps_wine_btn)
+        self.winapps_wine_btn.connect("clicked", self._on_install_wine)
+        inner.pack_start(self.winapps_wine_btn, False, False, 0)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.winapps_entry = Gtk.Entry()
+        self.winapps_entry.set_placeholder_text("Search, for example VLC or 7-Zip")
+        self.winapps_entry.connect("activate", self._on_search_winapps)
+        row.pack_start(self.winapps_entry, True, True, 0)
+        search_btn = Gtk.Button(label="Search")
+        search_btn.connect("clicked", self._on_search_winapps)
+        row.pack_start(search_btn, False, False, 0)
+        inner.pack_start(row, False, False, 0)
+
+        self.winapps_spin = Gtk.Spinner()
+        self.winapps_spin.set_no_show_all(True)
+        inner.pack_start(self.winapps_spin, False, False, 0)
+        self.winapps_results = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        inner.pack_start(self.winapps_results, False, False, 0)
+        box.pack_start(fr, False, False, 0)
+        self._refresh_winapps_status()
+        return box
+
+    def _refresh_winapps_status(self):
+        if ruke_winapps is None:
+            self.winapps_status.set_text("Windows apps helper is missing.")
+            self.winapps_wine_btn.set_sensitive(False)
+            return
+        if not ruke_winapps.wine_supported():
+            self.winapps_status.set_text(ruke_winapps.arch_message())
+            self.winapps_wine_btn.set_sensitive(False)
+            self.winapps_wine_btn.hide()
+            return
+        if ruke_winapps.wine_ok():
+            self.winapps_status.set_text("Wine is installed. Search for a program, then install it. A shortcut is added to the desktop and the menu.")
+            self.winapps_wine_btn.hide()
+            self.winapps_wine_btn.set_sensitive(False)
+        else:
+            self.winapps_status.set_text("Wine is needed first (only on x86_64). This downloads the Wine package with apk.")
+            self.winapps_wine_btn.show()
+            self.winapps_wine_btn.set_sensitive(True)
+
+    def _on_install_wine(self, _btn):
+        if ruke_winapps is None:
+            return
+        self.winapps_wine_btn.set_sensitive(False)
+        self.winapps_spin.show(); self.winapps_spin.start()
+        self.winapps_status.set_text("Installing Wine… this can take a few minutes.")
+
+        def work():
+            rc, msg = ruke_winapps.install_wine()
+            def done():
+                self.winapps_spin.stop()
+                self.winapps_status.set_text(msg)
+                self._refresh_winapps_status()
+                if rc != 0:
+                    self.winapps_status.get_style_context().add_class("error")
+                return False
+            GLib.idle_add(done)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _on_search_winapps(self, *_):
+        if ruke_winapps is None:
+            return
+        q = (self.winapps_entry.get_text() or "").strip()
+        if not q:
+            self.winapps_status.set_text("Type a program name first.")
+            return
+        if not ruke_winapps.wine_supported():
+            self.winapps_status.set_text(ruke_winapps.arch_message())
+            return
+        if not ruke_winapps.wine_ok():
+            self.winapps_status.set_text("Install Wine first, then search.")
+            return
+        self.winapps_spin.show(); self.winapps_spin.start()
+        self.winapps_status.set_text("Searching the Windows package catalog…")
+        for ch in list(self.winapps_results.get_children()):
+            self.winapps_results.remove(ch)
+
+        def work():
+            results, err = ruke_winapps.search(q)
+            def done():
+                self.winapps_spin.stop()
+                self._show_winapps_results(results, err)
+                return False
+            GLib.idle_add(done)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _show_winapps_results(self, results, err):
+        for ch in list(self.winapps_results.get_children()):
+            self.winapps_results.remove(ch)
+        if err and not results:
+            self.winapps_status.set_text(err)
+            return
+        self.winapps_status.set_text("Select a program to install. Store-only / MSIX packages are skipped.")
+        for info in results:
+            ins = ruke_winapps.pick_installer(info.get("installers") or [])
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+            name = Gtk.Label(label="%s  ·  %s" % (info.get("name") or info.get("id"), info.get("version") or ""), xalign=0)
+            name.set_ellipsize(Pango.EllipsizeMode.END)
+            col.pack_start(name, False, False, 0)
+            sub = Gtk.Label(label=info.get("id") or "", xalign=0)
+            sub.get_style_context().add_class("muted")
+            col.pack_start(sub, False, False, 0)
+            row.pack_start(col, True, True, 0)
+            if not ins:
+                skip = Gtk.Label(label="Store / MSIX only", xalign=1)
+                skip.get_style_context().add_class("muted")
+                row.pack_start(skip, False, False, 0)
+            else:
+                btn = Gtk.Button(label="Install")
+                btn.get_style_context().add_class("suggested-action")
+                _force_accent_button(btn)
+                btn.connect("clicked", self._on_install_winapp, info, btn)
+                row.pack_start(btn, False, False, 0)
+            self.winapps_results.pack_start(row, False, False, 0)
+        self.winapps_results.show_all()
+
+    def _on_install_winapp(self, _btn, info, btn):
+        btn.set_sensitive(False)
+        self.winapps_spin.show(); self.winapps_spin.start()
+        self.winapps_status.set_text("Installing %s…" % (info.get("name") or info.get("id")))
+
+        def progress(msg):
+            GLib.idle_add(lambda: (self.winapps_status.set_text(msg) or False))
+
+        def work():
+            ok, msg = ruke_winapps.install_package(info, progress=progress)
+            def done():
+                self.winapps_spin.stop()
+                self.winapps_status.set_text(msg)
+                ctx = self.winapps_status.get_style_context()
+                ctx.remove_class("ok")
+                ctx.remove_class("error")
+                ctx.add_class("ok" if ok else "error")
+                btn.set_sensitive(not ok)
+                return False
+            GLib.idle_add(done)
+        threading.Thread(target=work, daemon=True).start()
 
     def _build_help(self):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
@@ -2699,7 +2881,7 @@ class LockPreview(Gtk.Window):
         cr.move_to(cx - tw / 2.0, cy + 22)
         cr.show_text(text)
         cr.set_font_size(18)
-        text = "rukeOS  ·  locked"
+        text = "rukeOS  ·  Locked"
         xb, yb, tw, th, xa, ya = cr.text_extents(text)
         cr.move_to(cx - tw / 2.0, cy + radius + 36)
         cr.show_text(text)
@@ -3437,7 +3619,7 @@ def write_pid(name):
 
 def main(argv=None):
     p = argparse.ArgumentParser(prog="ruke-settings", description="rukeOS Settings")
-    p.add_argument("--page", choices=("updates", "customization", "security", "shortcuts", "help"), default="updates")
+    p.add_argument("--page", choices=("updates", "customization", "security", "shortcuts", "apps", "help"), default="updates")
     p.add_argument("--quickpanel", action="store_true", help="open the clock quick panel")
     p.add_argument("--wifi", action="store_true", help="open the Wi-Fi menu")
     p.add_argument("--preview-taskbar", action="store_true", help="render a dock/taskbar preview and exit")

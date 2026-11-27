@@ -4,12 +4,10 @@
 export NO_AT_BRIDGE=1 GTK_A11Y=none
 [ -n "$DISPLAY" ] || exit 1
 
-# already locked?
 if pgrep -u "$(id -u)" -x i3lock >/dev/null 2>&1 || pgrep -u "$(id -u)" -x i3lock-color >/dev/null 2>&1 || pgrep -u "$(id -u)" -x slock >/dev/null 2>&1; then
   exit 0
 fi
 
-# no password → ask the user to set one instead of locking to a blank secret
 if command -v ruke-passwd >/dev/null && [ "$(sudo -n ruke-passwd status 2>/dev/null)" = none ]; then
   if command -v ruke-settings >/dev/null; then
     ruke-settings --page security --prompt-password >/dev/null 2>&1 &
@@ -17,9 +15,6 @@ if command -v ruke-passwd >/dev/null && [ "$(sudo -n ruke-passwd status 2>/dev/n
   exit 1
 fi
 
-
-# Disable console switching while the pretty lock is up (needs sudo).
-# Re-enable on the way out even if i3lock is killed.
 vt_locked=0
 if command -v physlock >/dev/null && sudo -n physlock -l >/dev/null 2>&1; then
   vt_locked=1
@@ -27,29 +22,36 @@ if command -v physlock >/dev/null && sudo -n physlock -l >/dev/null 2>&1; then
 fi
 
 if command -v i3lock >/dev/null; then
-  # i3lock-color 2.13 (Alpine package name: i3lock-color, binary: i3lock)
-  # Plain dark background so the clock ring does not sit on top of the wallpaper logo.
-  # --nofork: wait until unlock so we can release physlock
+  # Always a plain Tokyo Night fill — never the desktop wallpaper (i3lock may
+  # otherwise keep the X root pixmap). Positions keep time, date and label apart.
+  bg=/usr/share/rukeos/lock-background.png
+  img=
+  [ -f "$bg" ] && img="--image=$bg --fill"
   i3lock --nofork \
     --ignore-empty-password \
     --show-failed-attempts \
     --indicator --clock \
     --color=1a1b26 \
-    --inside-color=1a1b26ee --ring-color=9B45FFff \
-    --insidever-color=24283bee --ringver-color=7aa2f7ff \
-    --insidewrong-color=24283bee --ringwrong-color=f7768eff \
+    $img \
+    --inside-color=1a1b26ff --ring-color=9B45FFff \
+    --insidever-color=24283bff --ringver-color=7aa2f7ff \
+    --insidewrong-color=24283bff --ringwrong-color=f7768eff \
     --line-color=00000000 --separator-color=00000000 \
     --keyhl-color=9ece6aff --bshl-color=f7768eff \
     --time-color=c0caf5ff --date-color=c0caf5ff \
     --greeter-color=c0caf5ff --verif-color=c0caf5ff \
     --wrong-color=f7768eff --modif-color=a9b1d6ff \
     --time-str="%H:%M" --date-str="%A, %d %B" \
-    --greeter-text="rukeOS  ·  locked" \
+    --greeter-text="rukeOS  ·  Locked" \
     --verif-text="Checking…" --wrong-text="Wrong password" --noinput-text="" \
     --time-font=Inter --date-font=Inter --greeter-font=Inter \
     --verif-font=Inter --wrong-font=Inter \
-    --time-size=48 --date-size=16 --greeter-size=20 \
+    --time-size=48 --date-size=16 --greeter-size=18 \
     --radius=110 --ring-width=8 \
+    --ind-pos="w/2:h/2-24" \
+    --time-pos="ix:iy-8" \
+    --date-pos="ix:iy+28" \
+    --greeter-pos="ix:iy+150" \
     --pass-media-keys --pass-screen-keys --pass-volume-keys
   rc=$?
 elif command -v slock >/dev/null; then

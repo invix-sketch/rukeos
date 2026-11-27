@@ -1,5 +1,11 @@
 # rukeOS changelog
 
+## 0.4.4
+- Fix the 0.4.3 theme not applying over OTA: rukeOS-dark no longer @imports Adwaita-dark (a failed import made GTK discard the whole theme and fall back to a white/light Adwaita). Existing sticks get user and system theme settings rewritten by a migration, including xsettingsd.
+- Settings: the selected sidebar item and the Check for updates button stay purple with white text, even if the system theme falls back.
+- Lock screen always uses a plain dark background (not the wallpaper) and places the time, date, and “rukeOS · Locked” so they no longer overlap.
+- App store (Settings → Apps, or the App store menu item): a Windows apps section searches the public winget-pkgs catalog and installs classic .exe/.msi packages with Wine (installed on first use, x86_64 only). Store/MSIX packages are skipped. Launchers are added to the desktop and menu. Big apps may be slow on 512 MB.
+
 ## 0.4.3
 - Cosmetic fixes: Files (PCManFM) icon view is Tokyo Night dark instead of white, and folders use the Papirus folder icons instead of the dark app-tile. The Wi-Fi list, Night light / Airplane / Wi-Fi switches, and the selected Settings sidebar item are dark too. rukeOS-dark now starts from Adwaita-dark so those white holes stay closed.
 - Icon pack: the gray split is darker (#2E2E36) and the purple is more saturated (#9B45FF) so the glyphs pop.
