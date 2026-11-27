@@ -22,7 +22,7 @@ from gi.repository import Gtk, Gdk, GLib, GdkPixbuf, Pango
 
 # Tokyo Night + Judah's icon-pack purple
 BG, BG2, SURF, FG, MUTED = "#1a1b26", "#16161e", "#24283b", "#c0caf5", "#565f89"
-PURPLE, PURPLE_DK = "#7b4fd6", "#6a35d0"
+PURPLE, PURPLE_DK = "#9b45ff", "#6f18e0"
 BLUE, GREEN, RED, YELLOW, CYAN = "#7aa2f7", "#9ece6a", "#f7768e", "#e0af68", "#7dcfff"
 
 ACCENTS = [
@@ -69,16 +69,23 @@ VERSION_FILE = "/etc/rukeos/version"
 CSS = """
 window, .background { background-color: #1a1b26; color: #c0caf5; font-family: Inter, sans-serif; }
 headerbar { background-color: #16161e; color: #c0caf5; box-shadow: none;
-  border-bottom: 1px solid rgba(123,79,214,0.28); min-height: 40px; }
+  border-bottom: 1px solid rgba(155,69,255,0.28); min-height: 40px; }
 headerbar button { color: #c0caf5; border-radius: 8px; }
 .sidebar { background-color: #16161e; padding: 10px 8px; }
 .sidebar button { border-radius: 8px; padding: 9px 12px; color: #c0caf5;
   background: none; border: none; box-shadow: none; }
-.sidebar button:hover { background-color: rgba(123,79,214,0.16); }
-.sidebar button.selected { background-color: #7b4fd6; color: #ffffff; }
+.sidebar button:hover { background-color: rgba(155,69,255,0.16); }
+
+.sidebar button.selected, .sidebar button.selected:hover, .sidebar button.selected:focus,
+.sidebar button.selected:active, .sidebar button.selected:checked, .sidebar button:checked {
+  background-image: none; background-color: #9B45FF; background: #9B45FF;
+  color: #ffffff; border: none; box-shadow: none; text-shadow: none;
+}
+.sidebar button.selected label, .sidebar button:checked label { color: #ffffff; }
+
 .card { background-color: #24283b; border-radius: 12px; padding: 16px; }
 button.suggested-action, button.accent {
-  background-image: none; background-color: #7b4fd6; color: #ffffff;
+  background-image: none; background-color: #9b45ff; color: #ffffff;
   border-radius: 8px; border: none; padding: 8px 16px; font-weight: 600; }
 button.suggested-action:hover, button.accent:hover { background-color: #8b63e0; }
 button.suggested-action:disabled { opacity: 0.55; }
@@ -86,25 +93,25 @@ button.flat { background: none; border: none; box-shadow: none; color: #c0caf5; 
 button.danger { background-image: none; background-color: #f7768e; color: #16161e;
   border-radius: 8px; border: none; padding: 8px 14px; }
 progressbar trough { min-height: 8px; border-radius: 8px; background-color: #16161e; border: none; }
-progressbar progress { min-height: 8px; border-radius: 8px; background-color: #7b4fd6; }
-entry { background-color: #16161e; color: #c0caf5; border: 1px solid rgba(123,79,214,0.30);
+progressbar progress { min-height: 8px; border-radius: 8px; background-color: #9b45ff; }
+entry { background-color: #16161e; color: #c0caf5; border: 1px solid rgba(155,69,255,0.30);
   border-radius: 8px; min-height: 28px; padding: 0 10px; }
-entry:focus { border-color: #7b4fd6; }
-scale highlight { background-color: #7b4fd6; }
+entry:focus { border-color: #9b45ff; }
+scale highlight { background-color: #9b45ff; }
 scale trough { background-color: #16161e; border-radius: 8px; min-height: 6px; }
 switch slider { background-color: #c0caf5; }
 switch { background-color: #414868; }
-switch:checked { background-color: #7b4fd6; }
+switch:checked { background-color: #9b45ff; }
 label.muted { color: #565f89; }
 label.error { color: #f7768e; }
 label.ok { color: #9ece6a; }
 label.warn { color: #e0af68; }
 .wifi-row { border-radius: 8px; padding: 6px 8px; }
-.wifi-row:hover { background-color: rgba(123,79,214,0.12); }
-.wifi-row.active { background-color: rgba(123,79,214,0.28); }
+.wifi-row:hover { background-color: rgba(155,69,255,0.12); }
+.wifi-row.active { background-color: rgba(155,69,255,0.28); }
 #quickpanel { background-color: #1a1b26; }
 #quickpanel-frame { background-color: #1a1b26; border-radius: 14px;
-  border: 1px solid rgba(123,79,214,0.40); padding: 4px; }
+  border: 1px solid rgba(155,69,255,0.40); padding: 4px; }
 button.action-btn, button.action-btn:disabled {
   background-image: none;
   background-color: #24283b;
@@ -134,28 +141,37 @@ button.action-btn label { color: #c0caf5; background: none; }
 button.action-btn.power-btn:hover label, button.action-btn.power-btn:active label { color: #16161e; }
 label.signal { font-family: "JetBrains Mono", monospace; }
 
-.wifi-shell { background-color: #1a1b26; }
+.wifi-shell, .wifi-shell * { color: #c0caf5; }
+.wifi-shell, .wifi-shell scrolledwindow, .wifi-shell viewport, .wifi-shell box {
+  background-color: #1a1b26; background-image: none;
+}
 .wifi-card { background-color: #24283b; border-radius: 12px; }
 button.wifi-item {
-  background: transparent; background-image: none; border: none; box-shadow: none;
-  border-radius: 10px; padding: 0; min-height: 0; outline: none;
+  background: #1a1b26; background-color: #1a1b26; background-image: none; border: none; box-shadow: none;
+  border-radius: 10px; padding: 0; min-height: 0; outline: none; color: #c0caf5;
 }
-button.wifi-item:hover { background: rgba(123,79,214,0.14); background-image: none; }
-button.wifi-item:active { background: rgba(123,79,214,0.22); background-image: none; }
-button.wifi-item.active { background: rgba(123,79,214,0.30); background-image: none; }
+button.wifi-item:hover { background: rgba(155,69,255,0.14); background-image: none; }
+button.wifi-item:active { background: rgba(155,69,255,0.22); background-image: none; }
+button.wifi-item.active { background: rgba(155,69,255,0.30); background-image: none; }
 button.wifi-item label { color: #c0caf5; background: none; }
-.wifi-pass { background-color: #24283b; border-radius: 12px; border: 1px solid rgba(123,79,214,0.40); }
+.wifi-pass { background-color: #24283b; border-radius: 12px; border: 1px solid rgba(155,69,255,0.40); }
 .wifi-header { color: #c0caf5; }
 #taskbar-preview, .taskbar-preview { background-color: #1a1b26; }
 .taskbar-top { background-color: #16161e; }
 .taskbar-dock { background-color: #16161e; border-radius: 16px; }
-button.suggested-action { background: #7B4FD6; background-image: none; color: #ffffff; border: none; border-radius: 8px; min-height: 32px; }
+button.suggested-action { background: #9B45FF; background-image: none; color: #ffffff; border: none; border-radius: 8px; min-height: 32px; }
 button.suggested-action:hover { background: #6A35D0; background-image: none; }
 switch { min-width: 42px; }
-switch:checked, switch:checked:hover, switch:checked:backdrop {
-  background: #7B4FD6; background-color: #7B4FD6; background-image: none; border-color: #7B4FD6;
+switch {
+  background-color: #414868; background-image: none; border: none; box-shadow: none; min-width: 42px;
 }
-switch slider { min-width: 18px; min-height: 18px; }
+switch:hover { background-color: #4a5270; background-image: none; }
+switch:checked, switch:checked:hover, switch:checked:backdrop, switch:checked:disabled {
+  background: #9B45FF; background-color: #9B45FF; background-image: none; border: none; box-shadow: none;
+}
+switch slider { background-color: #c0caf5; background-image: none; border: none; box-shadow: none; min-width: 18px; min-height: 18px; }
+switch:checked slider { background-color: #ffffff; background-image: none; }
+
 .swatch { border-radius: 16px; border: 2px solid transparent; min-width: 28px; min-height: 28px; padding: 0; }
 .swatch.selected { border-color: #ffffff; }
 
@@ -163,7 +179,7 @@ switch slider { min-width: 18px; min-height: 18px; }
   background-color: #16161e;
   border-radius: 6px;
   padding: 4px 8px;
-  border: 1px solid rgba(123,79,214,0.30);
+  border: 1px solid rgba(155,69,255,0.30);
 }
 .shortcut-keys label {
   font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
@@ -1925,7 +1941,7 @@ class SignalBars(Gtk.DrawingArea):
         cr.set_source_rgba(0, 0, 0, 0)
         cr.paint()
         if self.active:
-            on = (0.482, 0.310, 0.839, 1)  # #7B4FD6
+            on = (0.608, 0.271, 1.0, 1)  # #9B45FF
         else:
             on = (0.753, 0.792, 0.961, 1)  # #c0caf5
         off = (0.337, 0.373, 0.537, 0.40)
@@ -1957,7 +1973,7 @@ class LockMark(Gtk.DrawingArea):
 
     def _draw(self, _w, cr):
         if self.active:
-            cr.set_source_rgba(0.482, 0.310, 0.839, 1)
+            cr.set_source_rgba(0.608, 0.271, 1.0, 1)
         else:
             cr.set_source_rgba(0.337, 0.373, 0.537, 1)
         # shackle
@@ -2064,7 +2080,7 @@ class WifiList(Gtk.Box):
             hb.pack_start(LockMark(n.get("active")), False, False, 0)
         if n.get("active"):
             tick = Gtk.Label()
-            tick.set_markup('<span foreground="#7B4FD6"><b>✓</b></span>')
+            tick.set_markup('<span foreground="#9B45FF"><b>✓</b></span>')
             hb.pack_start(tick, False, False, 0)
         row.add(hb)
         row.connect("clicked", self._clicked, n)
@@ -2564,7 +2580,7 @@ class DesktopPreview(Gtk.Window):
             l.set_margin_bottom(5)
             if i == 0:
                 ev = Gtk.EventBox()
-                ev.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0.482, 0.310, 0.839, 1))
+                ev.override_background_color(Gtk.StateFlags.NORMAL, Gdk.RGBA(0.608, 0.271, 1.0, 1))
                 ev.add(l)
                 inner.pack_start(ev, False, False, 0)
             else:
@@ -2590,6 +2606,55 @@ class DesktopPreview(Gtk.Window):
         return False
 
 
+
+def folder_pixbuf(size=48):
+    """Simple folder glyph for previews (Papirus-style, not the app-tile pack icon)."""
+    import cairo
+    from gi.repository import GdkPixbuf
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    cr = cairo.Context(surface)
+    s = size / 48.0
+    cr.scale(s, s)
+    cr.set_source_rgba(0, 0, 0, 0)
+    cr.paint()
+    # tab
+    cr.move_to(6, 14)
+    cr.line_to(6, 12)
+    cr.curve_to(6, 10, 7, 9, 9, 9)
+    cr.line_to(20, 9)
+    cr.line_to(24, 14)
+    cr.close_path()
+    cr.set_source_rgb(0.48, 0.38, 0.85)  # muted purple tab
+    cr.fill()
+    # body
+    cr.move_to(6, 14)
+    cr.line_to(42, 14)
+    cr.curve_to(44, 14, 45, 15, 45, 17)
+    cr.line_to(45, 36)
+    cr.curve_to(45, 38, 44, 39, 42, 39)
+    cr.line_to(6, 39)
+    cr.curve_to(4, 39, 3, 38, 3, 36)
+    cr.line_to(3, 17)
+    cr.curve_to(3, 15, 4, 14, 6, 14)
+    cr.close_path()
+    cr.set_source_rgb(0.608, 0.271, 1.0)  # #9B45FF
+    cr.fill()
+    # slight highlight
+    cr.rectangle(5, 16, 38, 6)
+    cr.set_source_rgba(1, 1, 1, 0.12)
+    cr.fill()
+    loader = Gdk.pixbuf_get_from_surface
+    return loader(surface, 0, 0, size, size)
+
+
+def folder_image(size=48):
+    img = Gtk.Image()
+    pb = folder_pixbuf(size)
+    if pb:
+        img.set_from_pixbuf(pb)
+    return img
+
+
 class LockPreview(Gtk.Window):
     def __init__(self, screenshot=None):
         Gtk.Window.__init__(self, title="rukeOS lock")
@@ -2607,20 +2672,14 @@ class LockPreview(Gtk.Window):
     def _draw(self, w, cr):
         alloc = w.get_allocation()
         width, height = max(alloc.width, 1), max(alloc.height, 1)
-        pb = _wallpaper_pixbuf(width, height)
-        if pb:
-            Gdk.cairo_set_source_pixbuf(cr, pb, 0, 0)
-            cr.paint()
-            cr.set_source_rgba(0.102, 0.106, 0.149, 0.35)
-            cr.paint()
-        else:
-            cr.set_source_rgb(0.102, 0.106, 0.149)
-            cr.paint()
+        # Plain Tokyo Night fill — no wallpaper logo behind the clock ring
+        cr.set_source_rgb(0.102, 0.106, 0.149)  # #1a1b26
+        cr.paint()
         cx, cy = width / 2.0, height / 2.0 - 20
         radius = 110
         # ring
         cr.set_line_width(8)
-        cr.set_source_rgb(0.482, 0.310, 0.839)  # #7B4FD6
+        cr.set_source_rgb(0.608, 0.271, 1.0)  # #9B45FF
         cr.arc(cx, cy, radius, 0, 6.2832)
         cr.stroke()
         cr.set_source_rgba(0.102, 0.106, 0.149, 0.85)
@@ -2687,15 +2746,16 @@ class FileManagerPreview(Gtk.Window):
         side.set_size_request(180, -1)
         side.set_margin_top(8)
         side.set_margin_start(8)
-        for name, lab in (("user", "Home"), ("files", "Desktop"), ("documents", "Documents"),
-                          ("downloads", "Downloads"), ("image-viewer", "Pictures"),
-                          ("video", "Videos"), ("music", "Music")):
+        for name, lab, kind in (("user", "Home", "app"), ("folder", "Desktop", "folder"),
+                          ("folder", "Documents", "folder"), ("folder", "Downloads", "folder"),
+                          ("folder", "Pictures", "folder"),
+                          ("video", "Videos", "app"), ("music", "Music", "app")):
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             row.set_margin_start(10)
             row.set_margin_end(10)
             row.set_margin_top(4)
             row.set_margin_bottom(4)
-            row.pack_start(icon_image(name, 20), False, False, 0)
+            row.pack_start(folder_image(20) if kind == "folder" else icon_image(name, 20), False, False, 0)
             l = Gtk.Label(label=lab, xalign=0)
             if lab == "Home":
                 l.set_markup("<b>Home</b>")
@@ -2709,13 +2769,13 @@ class FileManagerPreview(Gtk.Window):
         grid.set_margin_start(28)
         grid.set_margin_top(24)
         grid.set_valign(Gtk.Align.START)
-        for name, lab in (("files", "Desktop"), ("documents", "Documents"),
-                          ("downloads", "Downloads"), ("image-viewer", "Pictures"),
-                          ("terminal", "Terminal.desktop"), ("browser", "Browser.desktop")):
+        for name, lab, kind in (("folder", "Desktop", "folder"), ("folder", "Documents", "folder"),
+                          ("folder", "Downloads", "folder"), ("folder", "Pictures", "folder"),
+                          ("terminal", "Terminal.desktop", "app"), ("browser", "Browser.desktop", "app")):
             col = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
             col.set_halign(Gtk.Align.CENTER)
             col.set_size_request(96, -1)
-            col.pack_start(icon_image(name, 48), False, False, 0)
+            col.pack_start(folder_image(48) if kind == "folder" else icon_image(name, 48), False, False, 0)
             l = Gtk.Label(label=lab)
             l.set_line_wrap(True)
             l.set_justify(Gtk.Justification.CENTER)
@@ -3214,7 +3274,7 @@ class StatusTray(Gtk.Window):
             level = 0
             slash = True
         elif st == "ethernet":
-            color = (0.482, 0.310, 0.839, 1)
+            color = (0.608, 0.271, 1.0, 1)
             level = 4
             slash = False
         elif st == "connected":
@@ -3231,7 +3291,7 @@ class StatusTray(Gtk.Window):
                 level = 1
             slash = False
         elif st == "connecting":
-            color = (0.482, 0.310, 0.839, 1)
+            color = (0.608, 0.271, 1.0, 1)
             level = 2
             slash = False
         else:

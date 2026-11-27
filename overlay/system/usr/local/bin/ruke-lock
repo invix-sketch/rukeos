@@ -17,11 +17,6 @@ if command -v ruke-passwd >/dev/null && [ "$(sudo -n ruke-passwd status 2>/dev/n
   exit 1
 fi
 
-wp=/usr/share/backgrounds/rukeos.png
-if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/rukeos/appearance.conf" ]; then
-  w=$(awk -F= '/^wallpaper=/{print $2}' "${XDG_CONFIG_HOME:-$HOME/.config}/rukeos/appearance.conf" | tail -1)
-  [ -n "$w" ] && [ -f "$w" ] && wp=$w
-fi
 
 # Disable console switching while the pretty lock is up (needs sudo).
 # Re-enable on the way out even if i3lock is killed.
@@ -33,16 +28,14 @@ fi
 
 if command -v i3lock >/dev/null; then
   # i3lock-color 2.13 (Alpine package name: i3lock-color, binary: i3lock)
-  img=
-  [ -f "$wp" ] && img="--image=$wp --fill"
+  # Plain dark background so the clock ring does not sit on top of the wallpaper logo.
   # --nofork: wait until unlock so we can release physlock
   i3lock --nofork \
     --ignore-empty-password \
     --show-failed-attempts \
     --indicator --clock \
     --color=1a1b26 \
-    $img \
-    --inside-color=1a1b26ee --ring-color=7B4FD6ff \
+    --inside-color=1a1b26ee --ring-color=9B45FFff \
     --insidever-color=24283bee --ringver-color=7aa2f7ff \
     --insidewrong-color=24283bee --ringwrong-color=f7768eff \
     --line-color=00000000 --separator-color=00000000 \

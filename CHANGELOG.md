@@ -1,5 +1,10 @@
 # rukeOS changelog
 
+## 0.4.3
+- Cosmetic fixes: Files (PCManFM) icon view is Tokyo Night dark instead of white, and folders use the Papirus folder icons instead of the dark app-tile. The Wi-Fi list, Night light / Airplane / Wi-Fi switches, and the selected Settings sidebar item are dark too. rukeOS-dark now starts from Adwaita-dark so those white holes stay closed.
+- Icon pack: the gray split is darker (#2E2E36) and the purple is more saturated (#9B45FF) so the glyphs pop.
+- Lock screen uses a plain Tokyo Night background so the clock ring no longer overlaps the wallpaper logo.
+
 ## 0.4.2
 - Purple Task Manager icon in the dock and application menu, matching the rest of the rukeOS icon pack.
 - Default keyboard shortcuts: Super+Space for the menu, Ctrl+Alt+T terminal, Super+E files, Super+B browser, Super+I settings, Ctrl+Shift+Esc task manager, Super+L lock, Alt+F4, Alt+Tab, and PrtSc for a screenshot (saved to ~/Pictures). Settings → Keyboard shortcuts lists them and lets you add, edit, or remove custom shortcuts (key combination + command). Changes are saved per user and applied by regenerating the JWM keys and restarting JWM. Existing installs get this through ruke-update.

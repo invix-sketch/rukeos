@@ -7,15 +7,15 @@
     </defs>
     <g clip-path="url(#tile)">
       <rect width="512" height="512" fill="#000000"/>
-      <polygon points="512,0 512,512 0,512" fill="#555555"/>
+      <polygon points="512,0 512,512 0,512" fill="#2E2E36"/>
     </g>
-    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="none" stroke="#6A35D0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="none" stroke="#6F18E0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
       
       <circle cx="10.6" cy="10.6" r="6.4"/>
       <path d="m20 20-4.15-4.15"/>
     
     </g>
-    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="none" stroke="#7B4FD6" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(256.0,256.0) scale(13.5) translate(-12,-12)" fill="none" stroke="#9B45FF" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round">
       
       <circle cx="10.6" cy="10.6" r="6.4"/>
       <path d="m20 20-4.15-4.15"/>

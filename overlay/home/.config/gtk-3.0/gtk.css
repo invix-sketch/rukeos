@@ -89,3 +89,31 @@ FmMainWin, FmTabPage, FmStandardView, scrolledwindow, viewport {
   background-color: #1a1b26; color: #c0caf5;
 }
 FmPlacesView, FmDirTreeView { background-color: #16161e; color: #a9b1d6; }
+
+
+/* 0.4.3: close remaining white holes in file views, lists, switches */
+iconview, iconview.view, .view, .content-view, FmStandardView, FmMainWin, FmTabPage,
+scrolledwindow, viewport, list, listbox, list row, listbox row {
+  background-color: #1a1b26;
+  background-image: none;
+  color: #c0caf5;
+}
+.cell, iconview .cell, iconview.view .cell, .view .cell {
+  background-color: transparent;
+  color: #c0caf5;
+}
+.cell:selected, iconview:selected, iconview.view:selected, .view:selected,
+row:selected, list row:selected {
+  background-color: alpha(#9B45FF, 0.38);
+  color: #ffffff;
+}
+button:checked, togglebutton:checked, button.selected {
+  background-color: #9B45FF;
+  background-image: none;
+  color: #ffffff;
+}
+switch { background-color: #414868; background-image: none; border: none; }
+switch:checked, switch:checked:hover, switch:checked:backdrop {
+  background-color: #9B45FF; background-image: none; border: none;
+}
+switch slider { background-color: #c0caf5; background-image: none; border: none; box-shadow: none; }

@@ -1,15 +1,22 @@
-/* rukeOS-dark: Tokyo Night surfaces so GTK3 apps (PCManFM, Mousepad, NetSurf) are never white. */
-@define-color accent_color #7B4FD6;
-@define-color accent_bg_color #7B4FD6;
+/* rukeOS-dark: Adwaita-dark as a complete base, then Tokyo Night surfaces.
+   Importing the built-in dark theme closes the white holes (iconview, lists,
+   switches, selected rows) that a partial custom sheet left behind. */
+@import url("resource:///org/gtk/libgtk/theme/Adwaita/gtk-contained-dark.css");
+
+@define-color accent_color #9B45FF;
+@define-color accent_bg_color #9B45FF;
 @define-color accent_fg_color #ffffff;
 @define-color window_bg_color #1a1b26;
 @define-color window_fg_color #c0caf5;
-@define-color view_bg_color #1f2335;
+@define-color view_bg_color #1a1b26;
 @define-color view_fg_color #c0caf5;
 @define-color headerbar_bg_color #16161e;
 @define-color headerbar_fg_color #c0caf5;
+@define-color headerbar_backdrop_color #16161e;
+@define-color headerbar_shade_color rgba(0,0,0,0.3);
 @define-color sidebar_bg_color #16161e;
 @define-color sidebar_fg_color #a9b1d6;
+@define-color sidebar_backdrop_color #16161e;
 @define-color popover_bg_color #24283b;
 @define-color popover_fg_color #c0caf5;
 @define-color dialog_bg_color #24283b;
@@ -17,13 +24,13 @@
 @define-color card_bg_color #24283b;
 @define-color theme_bg_color #1a1b26;
 @define-color theme_fg_color #c0caf5;
-@define-color theme_base_color #1f2335;
+@define-color theme_base_color #1a1b26;
 @define-color theme_text_color #c0caf5;
-@define-color theme_selected_bg_color #7B4FD6;
+@define-color theme_selected_bg_color #9B45FF;
 @define-color theme_selected_fg_color #ffffff;
 @define-color theme_unfocused_bg_color #1a1b26;
 @define-color theme_unfocused_fg_color #c0caf5;
-@define-color theme_unfocused_base_color #1f2335;
+@define-color theme_unfocused_base_color #1a1b26;
 @define-color theme_unfocused_text_color #c0caf5;
 @define-color theme_unfocused_selected_bg_color #3b3558;
 @define-color theme_unfocused_selected_fg_color #c0caf5;
@@ -35,118 +42,178 @@
 @define-color wm_bg #16161e;
 @define-color wm_title #c0caf5;
 
-* { color: @window_fg_color; }
-
-window, window.background, .background, dialog, messagedialog, .csd,
-decoration, decoration-overlay {
-  background-color: @window_bg_color;
-  color: @window_fg_color;
+window, window.background, .background, .csd, .solid-csd,
+dialog, messagedialog, decoration, decoration-overlay {
+  background-color: #1a1b26;
+  color: #c0caf5;
 }
 
-headerbar, .titlebar, menubar, menubar > menuitem, toolbar, .toolbar, .primary-toolbar {
-  background-color: @headerbar_bg_color;
+headerbar, .titlebar, menubar, toolbar, .toolbar, .primary-toolbar {
+  background-color: #16161e;
   background-image: none;
-  color: @headerbar_fg_color;
-  border-color: @borders;
+  color: #c0caf5;
+  border-color: #3b3f51;
 }
 
-headerbar label, .titlebar label, .title, .subtitle { color: @headerbar_fg_color; }
-
-/* File views, lists, text views — the usual "white hole" in PCManFM */
+/* File / icon / list views — the usual PCManFM white hole */
 .view, .view:not(:selected),
-iconview, iconview.view,
+iconview, iconview.view, iconview.view:not(:selected),
 treeview, treeview.view,
 textview, textview.view, textview text,
-list, listview, flowbox, viewport, viewport.frame,
-scrolledwindow, scrolledwindow > viewport, overlay,
-stack, notebook, notebook > stack, paned, paned > *,
-.content, .content-view,
-FmMainWin, FmStandardView, FmDirTreeView, FmPlacesView, FmTabPage {
-  background-color: @view_bg_color;
+list, listview, listbox, flowbox,
+viewport, viewport.frame,
+scrolledwindow, scrolledwindow > viewport, scrolledwindow > viewport > *,
+overlay, stack, notebook, notebook > stack,
+paned, paned > *,
+.content, .content-view, .content-view .view,
+FmMainWin, FmStandardView, FmDirTreeView, FmPlacesView, FmTabPage,
+#FmStandardView, #fm-standard-view, .fm-standard-view, .fm-icon-view, .fm-thumbnail-view {
+  background-color: #1a1b26;
   background-image: none;
-  color: @view_fg_color;
+  color: #c0caf5;
 }
 
-iconview, iconview.view, FmStandardView {
-  background-color: @window_bg_color;
-  color: @window_fg_color;
+iconview, iconview.view, FmStandardView, #FmStandardView {
+  background-color: #1a1b26;
+  color: #c0caf5;
+}
+
+/* Cells must be transparent so the view background shows, not a white tile */
+.cell, iconview.view .cell, iconview .cell, treeview.view .cell, .view .cell {
+  background-color: transparent;
+  background-image: none;
+  color: #c0caf5;
+}
+.cell:selected, .cell:selected:focus,
+iconview.view:selected, iconview.view:selected:focus,
+iconview:selected, iconview:selected:focus,
+.view:selected, .view:selected:focus,
+treeview.view:selected, treeview.view:selected:focus,
+row:selected, list row:selected, listbox row:selected {
+  background-color: rgba(155, 69, 255, 0.38);
+  background-image: none;
+  color: #ffffff;
 }
 
 treeview.view, FmPlacesView, FmDirTreeView, .sidebar, stacksidebar, placessidebar, filechooser .sidebar {
-  background-color: @sidebar_bg_color;
-  color: @sidebar_fg_color;
+  background-color: #16161e;
+  color: #a9b1d6;
 }
 
-treeview.view:hover, iconview:hover, .view:hover {
-  background-color: alpha(@accent_bg_color, 0.12);
-  color: @window_fg_color;
+treeview.view:hover, iconview:hover, .view:hover, list row:hover, listbox row:hover {
+  background-color: rgba(155, 69, 255, 0.12);
+  color: #c0caf5;
 }
 
-.view:selected, .view:selected:focus,
-iconview:selected, iconview:selected:focus,
-treeview.view:selected, treeview.view:selected:focus,
-row:selected, list row:selected {
-  background-color: alpha(@accent_bg_color, 0.38);
-  color: #ffffff;
+list, listbox, list row, listbox row, row, .activatable {
+  background-color: #1a1b26;
+  background-image: none;
+  color: #c0caf5;
 }
 
 entry, entry.flat, spinbutton, spinbutton entry, search entry, combobox entry {
   background-color: #24283b;
   background-image: none;
-  color: @window_fg_color;
-  border: 1px solid @borders;
+  color: #c0caf5;
+  border: 1px solid #3b3f51;
   border-radius: 8px;
 }
-entry:focus { border-color: @accent_color; }
+entry:focus { border-color: #9B45FF; }
 
-button, button.flat, toolbutton, combobox > box, .path-bar button {
+button, button.flat, toolbutton, combobox > box, .path-bar button,
+togglebutton, button.toggle {
   background-color: #24283b;
   background-image: none;
-  color: @window_fg_color;
-  border-color: @borders;
+  color: #c0caf5;
+  border-color: #3b3f51;
+  text-shadow: none;
 }
-button:hover, toolbutton:hover { background-color: alpha(@accent_bg_color, 0.18); }
-button:active, button:checked { background-color: alpha(@accent_bg_color, 0.32); }
-button.suggested-action { background-color: @accent_bg_color; color: #ffffff; }
+button:hover, toolbutton:hover, togglebutton:hover {
+  background-color: rgba(155, 69, 255, 0.18);
+  background-image: none;
+}
+button:active, button:checked, button.toggle:checked, togglebutton:checked, togglebutton:checked:hover {
+  background-color: rgba(155, 69, 255, 0.40);
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+button:selected, button.selected, button.selected:hover, button.selected:focus, button.selected:active {
+  background-color: #9B45FF;
+  background-image: none;
+  color: #ffffff;
+  box-shadow: none;
+}
+button.selected label, button:checked label, togglebutton:checked label { color: #ffffff; }
+button.suggested-action { background-color: #9B45FF; background-image: none; color: #ffffff; }
+
+/* Switches: Adwaita-light :checked is a pale/white track */
+switch {
+  background-color: #414868;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+  color: #c0caf5;
+  min-width: 42px;
+}
+switch:hover { background-color: #4a5270; background-image: none; }
+switch:checked, switch:checked:hover, switch:checked:backdrop, switch:checked:disabled {
+  background-color: #9B45FF;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+switch slider {
+  background-color: #c0caf5;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+  min-width: 18px;
+  min-height: 18px;
+}
+switch:checked slider { background-color: #ffffff; background-image: none; }
 
 menu, .menu, .context-menu, popover, popover.background, popover.menu, tooltip, .tooltip {
-  background-color: @popover_bg_color;
+  background-color: #24283b;
   background-image: none;
-  color: @popover_fg_color;
-  border-color: @borders;
+  color: #c0caf5;
+  border-color: #3b3f51;
 }
-menuitem:hover, modelbutton:hover { background-color: @accent_bg_color; color: #ffffff; }
+menuitem:hover, modelbutton:hover { background-color: #9B45FF; color: #ffffff; }
 
-statusbar, .bottom-bar, actionbar {
-  background-color: @headerbar_bg_color;
-  color: #565f89;
-}
+statusbar, .bottom-bar, actionbar { background-color: #16161e; color: #565f89; }
 
 notebook > header, notebook > header tabs, notebook > header tab {
-  background-color: @headerbar_bg_color;
-  color: @window_fg_color;
-  border-color: @borders;
+  background-color: #16161e;
+  color: #c0caf5;
+  border-color: #3b3f51;
 }
 notebook > header tab:checked {
   background-color: #24283b;
   color: #ffffff;
-  box-shadow: inset 0 -2px @accent_color;
+  box-shadow: inset 0 -2px #9B45FF;
 }
 
-scrollbar, scrollbar trough { background-color: @window_bg_color; }
-scrollbar slider { background-color: alpha(#c0caf5, 0.28); border-radius: 8px; min-width: 6px; min-height: 6px; }
-scrollbar slider:hover { background-color: @accent_color; }
+scrollbar, scrollbar trough { background-color: #1a1b26; }
+scrollbar slider { background-color: rgba(192, 202, 245, 0.28); border-radius: 8px; min-width: 6px; min-height: 6px; }
+scrollbar slider:hover { background-color: #9B45FF; }
 
-separator, paned > separator { background-color: @headerbar_bg_color; min-width: 1px; min-height: 1px; }
+separator, paned > separator { background-color: #16161e; min-width: 1px; min-height: 1px; }
 
-/* Keep the desktop wallpaper (pcmanfm --desktop) — no solid/white boxes */
+rubberband, .rubberband, .view rubberband, flowbox rubberband {
+  background-color: rgba(155, 69, 255, 0.20);
+  border: 1px solid #9B45FF;
+}
+
+/* Desktop wallpaper stays visible under pcmanfm --desktop */
 window.desktop, window#fm-desktop, #fm-desktop, .fm-desktop, FmDesktop, window.background.desktop {
   background-color: transparent;
   background-image: none;
   border: none;
   box-shadow: none;
 }
-window.desktop .view, window.desktop iconview, #fm-desktop .view, FmDesktop .view {
+window.desktop .view, window.desktop iconview, #fm-desktop .view, FmDesktop .view,
+window.desktop .cell, #fm-desktop .cell {
   background-color: transparent;
   color: #c0caf5;
   border: none;
@@ -158,7 +225,7 @@ window.desktop label, #fm-desktop label, FmDesktop label {
   text-shadow: 0 1px 2px #1a1b26, 0 0 6px #1a1b26;
 }
 window.desktop .view:selected, #fm-desktop .view:selected {
-  background-color: alpha(@accent_bg_color, 0.35);
+  background-color: rgba(155, 69, 255, 0.35);
   color: #ffffff;
   border-radius: 10px;
 }
